@@ -9,6 +9,10 @@ import animalesRoutes from './routes/animales';
 import propietariosRoutes from './routes/propietarios';
 import uppsRoutes from './routes/upps';
 import dashboardRoutes from './routes/dashboard';
+import eventosRoutes from './routes/eventos';
+import aretesRoutes from './routes/aretes';
+import busquedaRoutes from './routes/busqueda';
+import swaggerRoutes from './routes/swagger';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -20,13 +24,16 @@ app.use(express.json());
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     service: 'SIGGAN API',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
   });
 });
+
+// Documentación
+app.use('/api/docs', swaggerRoutes);
 
 // Rutas
 app.use('/api/auth', authRoutes);
@@ -34,6 +41,9 @@ app.use('/api/animales', animalesRoutes);
 app.use('/api/propietarios', propietariosRoutes);
 app.use('/api/upps', uppsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/eventos', eventosRoutes);
+app.use('/api/aretes', aretesRoutes);
+app.use('/api/busqueda', busquedaRoutes);
 
 // Manejo de errores
 app.use(errorHandler);
@@ -45,11 +55,12 @@ app.use((req, res) => {
 
 app.listen(PORT, () => {
   console.log(`
-  ╔══════════════════════════════════════╗
-  ║     🐄 SIGGAN API v1.0.0            ║
-  ║     Puerto: ${PORT}                    ║
-  ║     http://localhost:${PORT}/api/health ║
-  ╚══════════════════════════════════════╝
+  ╔══════════════════════════════════════════════╗
+  ║     🐄 SIGGAN API v1.0.0                    ║
+  ║     Puerto: ${PORT}                            ║
+  ║     API:  http://localhost:${PORT}/api/health   ║
+  ║     Docs: http://localhost:${PORT}/api/docs     ║
+  ╚══════════════════════════════════════════════╝
   `);
 });
 
