@@ -1,0 +1,258 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USUARIOS ====================
+model Usuario {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  nombre        String
+  apellidos     String
+  rol           Rol      @default(PRODUCTOR)
+  telefono      String?
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones
+  propiedades   Propietario[]
+  formularios   Formulario[]
+
+  @@map("usuarios")
+}
+
+enum Rol {
+  ADMIN
+  PRODUCTOR
+  MVZ
+  AUTORIDAD
+  OPERADOR
+}
+
+// ==================== PROPIETARIOS ====================
+model Propietario {
+  id            String   @id @default(uuid())
+  nombre        String
+  apellidos     String
+  curp          String?  @unique
+  rfc           String?
+  telefono      String?
+  direccion     String?
+  municipio     String
+  estado        String   @default("Durango")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones
+  usuarioId     String?
+  usuario       Usuario?  @relation(fields: [usuarioId], references: [id])
+  upps          UPP[]
+  animales      Animal[]
+  ventasComoVendedor    OfertaMarketplace[] @relation("Vendedor")
+  ventasComoComprador   OfertaMarketplace[] @relation("Comprador")
+
+  @@map("propietarios")
+}
+
+// ==================== UPP (Unidad de Producción Pecuaria) ====================
+model UPP {
+  id              String   @id @default(uuid())
+  claveUPP        String   @unique  // 12 dígitos SINIIGA
+  nombre          String
+  direccion       String?
+  municipio       String
+  estado          String   @default("Durango")
+  latitud         Float?
+  longitud        Float?
+  tipoExplotacion String?  // Cría, Engorda, Doble propósito, Lechera
+  estatusSanitario String  @default("EN_PROCESO") // LIBRE, EN_PROCESO, CUARENTENADO
+  superficieHa    Float?
+  capacidadAnimales Int?
+  activa          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relaciones
+  propietarioId   String
+  propietario     Propietario @relation(fields: [propietarioId], references: [id])
+  animales        Animal[]
+
+  @@map("upps")
+}
+
+// ==================== ANIMALES ====================
+model Animal {
+  id              String   @id @default(uuid())
+  areteNacional   String   @unique  // Arete amarillo SINIIGA
+  areteExportacion String? @unique  // Arete azul (si aplica)
+  rfidTag         String?  @unique  // Chip RFID
+  nombre          String?
+  raza            String
+  sexo            Sexo
+  fechaNacimiento DateTime
+  color           String?
+  peso            Float?
+  estatusSanitario String  @default("SANO") // SANO, EN_PRUEBA, REACTOR, CUARENTENADO
+  proposito       String?  // Cría, Engorda, Leche, Exportación
+  activo          Boolean  @default(true)
+  irisHash        String?  // Hash del código biométrico de iris
+  
+  // Blockchain (se llena cuando se integre)
+  blockchainTokenId String?
+  blockchainTxHash  String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relaciones
+  propietarioId   String
+  propietario     Propietario @relation(fields: [propietarioId], references: [id])
+  uppId           String
+  upp             UPP      @relation(fields: [uppId], references: [id])
+  eventos         EventoSanitario[]
+  aretes          HistorialArete[]
+  lecturas        LecturaIoT[]
+  publicaciones   OfertaMarketplace[]
+
+  // Madre y padre (opcionales)
+  madreId         String?
+  madre           Animal?  @relation("Genealogia", fields: [madreId], references: [id])
+  crias           Animal[] @relation("Genealogia")
+
+  @@map("animales")
+}
+
+enum Sexo {
+  MACHO
+  HEMBRA
+}
+
+// ==================== EVENTOS SANITARIOS ====================
+model EventoSanitario {
+  id              String   @id @default(uuid())
+  tipo            TipoEvento
+  descripcion     String?
+  fecha           DateTime
+  resultado       String?  // NEGATIVO, POSITIVO, PENDIENTE
+  mvzResponsable  String?  // Nombre del MVZ
+  cedulaMvz       String?
+  observaciones   String?
+  lote            String?  // Lote de vacuna/reactivo
+  proximaFecha    DateTime? // Próxima vacunación/revisión
+  createdAt       DateTime @default(now())
+
+  // Relaciones
+  animalId        String
+  animal          Animal   @relation(fields: [animalId], references: [id])
+
+  @@map("eventos_sanitarios")
+}
+
+enum TipoEvento {
+  VACUNACION
+  PRUEBA_TB
+  PRUEBA_BR
+  DESPARASITACION
+  TRATAMIENTO
+  PESAJE
+  INSPECCION
+  OTRO
+}
+
+// ==================== HISTORIAL DE ARETES ====================
+model HistorialArete {
+  id              String   @id @default(uuid())
+  tipoArete       String   // NACIONAL, EXPORTACION, RFID
+  numeroArete     String
+  accion          String   // ASIGNADO, BAJA, REEMPLAZO, TRANSFERIDO
+  motivo          String?
+  fecha           DateTime @default(now())
+
+  animalId        String
+  animal          Animal   @relation(fields: [animalId], references: [id])
+
+  @@map("historial_aretes")
+}
+
+// ==================== FORMULARIOS SENASICA ====================
+model Formulario {
+  id              String   @id @default(uuid())
+  tipo            TipoFormulario
+  folio           String   @unique  // UUID como folio
+  datos           Json     // Datos del formulario en JSON
+  estatus         String   @default("BORRADOR") // BORRADOR, ENVIADO, APROBADO, RECHAZADO
+  pdfUrl          String?
+  qrCode          String?
+  hashBlockchain  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relaciones
+  usuarioId       String
+  usuario         Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@map("formularios")
+}
+
+enum TipoFormulario {
+  SOLICITUD_TB_BR
+  PROGRAMACION_CAMPO
+  SOLICITUD_ARETES_EXPORTACION
+  GUIA_REEMO
+  CERTIFICADO_ZOOSANITARIO
+}
+
+// ==================== LECTURAS IoT ====================
+model LecturaIoT {
+  id              String   @id @default(uuid())
+  nodoId          String   // ID del nodo Arduino/ESP32
+  latitud         Float
+  longitud        Float
+  temperatura     Float?   // Temperatura corporal
+  rssi            Int?     // Señal LoRa
+  bateria         Float?   // % batería del dispositivo
+  timestamp       DateTime @default(now())
+
+  animalId        String
+  animal          Animal   @relation(fields: [animalId], references: [id])
+
+  @@map("lecturas_iot")
+}
+
+// ==================== MARKETPLACE ====================
+model OfertaMarketplace {
+  id              String   @id @default(uuid())
+  precioSolicitado Float
+  precioOfertado  Float?
+  estatus         EstatusOferta @default(PUBLICADO)
+  descripcion     String?
+  motivoVenta     String?
+  fechaPublicacion DateTime @default(now())
+  fechaCierre     DateTime?
+
+  // Relaciones
+  animalId        String
+  animal          Animal      @relation(fields: [animalId], references: [id])
+  vendedorId      String
+  vendedor        Propietario @relation("Vendedor", fields: [vendedorId], references: [id])
+  compradorId     String?
+  comprador       Propietario? @relation("Comprador", fields: [compradorId], references: [id])
+
+  @@map("ofertas_marketplace")
+}
+
+enum EstatusOferta {
+  PUBLICADO
+  CON_OFERTA
+  ACEPTADA
+  EN_VERIFICACION
+  TRANSFERIDA
+  RECHAZADA
+  CANCELADA
+}
