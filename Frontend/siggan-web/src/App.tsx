@@ -7,30 +7,33 @@ import DashboardPage from './pages/DashboardPage';
 import AnimalesPage from './pages/AnimalesPage';
 import AnimalDetallePage from './pages/AnimalDetallePage';
 import AnimalNuevoPage from './pages/AnimalNuevoPage';
+import PropietariosPage from './pages/PropietariosPage';
+import UPPsPage from './pages/UPPsPage';
+import EventosPage from './pages/EventosPage';
+import AretesPage from './pages/AretesPage';
+import MarketplacePage from './pages/MarketplacePage';
 import BusquedaPage from './pages/BusquedaPage';
-import { PropietariosPage, UPPsPage, EventosPage, AretesPage } from './pages/PlaceholderPages';
 
-const App: React.FC = () => {
-  return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={<Layout />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="animales" element={<AnimalesPage />} />
-            <Route path="animales/nuevo" element={<AnimalNuevoPage />} />
-            <Route path="animales/:id" element={<AnimalDetallePage />} />
-            <Route path="propietarios" element={<PropietariosPage />} />
-            <Route path="upps" element={<UPPsPage />} />
-            <Route path="eventos" element={<EventosPage />} />
-            <Route path="aretes" element={<AretesPage />} />
-            <Route path="busqueda" element={<BusquedaPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
-  );
-};
+const App: React.FC = () => (
+  <AuthProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<Layout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="animales" element={<AnimalesPage />} />
+          <Route path="animales/nuevo" element={<AnimalNuevoPage />} />
+          <Route path="animales/:id" element={<AnimalDetallePage />} />
+          <Route path="propietarios" element={<PropietariosPage />} />
+          <Route path="upps" element={<UPPsPage />} />
+          <Route path="eventos" element={<EventosPage />} />
+          <Route path="aretes" element={<AretesPage />} />
+          <Route path="marketplace" element={<MarketplacePage />} />
+          <Route path="busqueda" element={<BusquedaPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  </AuthProvider>
+);
 
 export default App;

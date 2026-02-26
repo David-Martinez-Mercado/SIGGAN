@@ -7,7 +7,7 @@ const router = Router();
 router.use(authMiddleware);
 
 const createEventoSchema = z.object({
-  animalId: z.string().uuid('ID de animal inválido'),
+  animalId: z.string().uuid(),
   tipo: z.enum(['VACUNACION', 'PRUEBA_TB', 'PRUEBA_BR', 'DESPARASITACION', 'TRATAMIENTO', 'PESAJE', 'INSPECCION', 'OTRO']),
   descripcion: z.string().optional(),
   fecha: z.string().transform(s => new Date(s)),
@@ -19,12 +19,24 @@ const createEventoSchema = z.object({
   proximaFecha: z.string().transform(s => new Date(s)).optional(),
 });
 
-// GET /api/eventos - Listar eventos con filtros
+async function getMiPropietarioId(userId: string): Promise<string | null> {
+  const prop = await prisma.propietario.findFirst({ where: { usuarioId: userId }, select: { id: true } });
+  return prop?.id || null;
+}
+
+// GET /api/eventos
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
-    const { animalId, tipo, resultado, fechaDesde, fechaHasta, page = '1', limit = '20' } = req.query;
-
+    const { animalId, tipo, resultado, fechaDesde, fechaHasta, page = '1', limit = '50' } = req.query;
     const where: any = {};
+
+    // PRODUCTOR solo ve eventos de sus animales
+    if (req.userRol === 'PRODUCTOR') {
+      const miId = await getMiPropietarioId(req.userId!);
+      if (!miId) { res.json({ data: [], total: 0 }); return; }
+      where.animal = { propietarioId: miId };
+    }
+
     if (animalId) where.animalId = animalId as string;
     if (tipo) where.tipo = tipo as string;
     if (resultado) where.resultado = resultado as string;
@@ -37,16 +49,11 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     const [eventos, total] = await Promise.all([
       prisma.eventoSanitario.findMany({
-        where,
-        skip,
-        take: parseInt(limit as string),
+        where, skip, take: parseInt(limit as string),
         include: {
           animal: {
             select: {
-              id: true,
-              areteNacional: true,
-              nombre: true,
-              raza: true,
+              id: true, areteNacional: true, nombre: true, raza: true,
               propietario: { select: { nombre: true, apellidos: true } },
               upp: { select: { claveUPP: true, nombre: true, municipio: true } },
             },
@@ -57,84 +64,29 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       prisma.eventoSanitario.count({ where }),
     ]);
 
-    res.json({
-      data: eventos,
-      total,
-      pagina: parseInt(page as string),
-      totalPaginas: Math.ceil(total / parseInt(limit as string)),
-    });
+    res.json({ data: eventos, total, pagina: parseInt(page as string), totalPaginas: Math.ceil(total / parseInt(limit as string)) });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener eventos' });
   }
 });
 
-// GET /api/eventos/animal/:animalId - Historial de un animal
-router.get('/animal/:animalId', async (req: AuthRequest, res: Response) => {
-  try {
-    const eventos = await prisma.eventoSanitario.findMany({
-      where: { animalId: req.params.animalId },
-      orderBy: { fecha: 'desc' },
-    });
-
-    res.json(eventos);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al obtener historial' });
-  }
-});
-
-// GET /api/eventos/proximos - Eventos próximos programados
-router.get('/proximos/pendientes', async (req: AuthRequest, res: Response) => {
-  try {
-    const { dias = '30' } = req.query;
-    const fechaLimite = new Date();
-    fechaLimite.setDate(fechaLimite.getDate() + parseInt(dias as string));
-
-    const proximos = await prisma.eventoSanitario.findMany({
-      where: {
-        proximaFecha: {
-          gte: new Date(),
-          lte: fechaLimite,
-        },
-      },
-      include: {
-        animal: {
-          select: {
-            id: true,
-            areteNacional: true,
-            nombre: true,
-            propietario: { select: { nombre: true, apellidos: true } },
-            upp: { select: { nombre: true, municipio: true } },
-          },
-        },
-      },
-      orderBy: { proximaFecha: 'asc' },
-    });
-
-    res.json(proximos);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al obtener eventos próximos' });
-  }
-});
-
-// GET /api/eventos/reactores - Animales reactores (positivos a TB/BR)
+// GET /api/eventos/reactores/lista
 router.get('/reactores/lista', async (req: AuthRequest, res: Response) => {
   try {
+    const where: any = { tipo: { in: ['PRUEBA_TB', 'PRUEBA_BR'] }, resultado: 'POSITIVO' };
+
+    if (req.userRol === 'PRODUCTOR') {
+      const miId = await getMiPropietarioId(req.userId!);
+      if (miId) where.animal = { propietarioId: miId };
+    }
+
     const reactores = await prisma.eventoSanitario.findMany({
-      where: {
-        tipo: { in: ['PRUEBA_TB', 'PRUEBA_BR'] },
-        resultado: 'POSITIVO',
-      },
+      where,
       include: {
         animal: {
           select: {
-            id: true,
-            areteNacional: true,
-            nombre: true,
-            raza: true,
-            estatusSanitario: true,
+            id: true, areteNacional: true, nombre: true, raza: true, estatusSanitario: true,
             propietario: { select: { nombre: true, apellidos: true, telefono: true } },
             upp: { select: { claveUPP: true, nombre: true, municipio: true } },
           },
@@ -150,54 +102,44 @@ router.get('/reactores/lista', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// POST /api/eventos - Crear evento sanitario
+// POST /api/eventos - SOLO MVZ y ADMIN
 router.post('/', async (req: AuthRequest, res: Response) => {
   try {
-    const data = createEventoSchema.parse(req.body);
-
-    // Verificar que el animal existe
-    const animal = await prisma.animal.findUnique({ where: { id: data.animalId } });
-    if (!animal) {
-      res.status(404).json({ error: 'Animal no encontrado' });
+    if (req.userRol !== 'MVZ' && req.userRol !== 'ADMIN') {
+      res.status(403).json({ error: 'Solo un Médico Veterinario (MVZ) puede registrar eventos sanitarios' });
       return;
     }
 
+    const data = createEventoSchema.parse(req.body);
+    const animal = await prisma.animal.findUnique({ where: { id: data.animalId } });
+    if (!animal) { res.status(404).json({ error: 'Animal no encontrado' }); return; }
+
     const evento = await prisma.eventoSanitario.create({
-      data: {
-        ...data,
-        proximaFecha: data.proximaFecha || undefined,
-      },
-      include: {
-        animal: {
-          select: { id: true, areteNacional: true, nombre: true },
-        },
-      },
+      data: { ...data, proximaFecha: data.proximaFecha || undefined },
+      include: { animal: { select: { id: true, areteNacional: true, nombre: true } } },
     });
 
-    // Si es prueba TB/BR positiva, actualizar estatus del animal
     if ((data.tipo === 'PRUEBA_TB' || data.tipo === 'PRUEBA_BR') && data.resultado === 'POSITIVO') {
-      await prisma.animal.update({
-        where: { id: data.animalId },
-        data: { estatusSanitario: 'REACTOR' },
-      });
+      await prisma.animal.update({ where: { id: data.animalId }, data: { estatusSanitario: 'REACTOR' } });
     }
 
     res.status(201).json(evento);
   } catch (error: any) {
-    if (error.name === 'ZodError') {
-      res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
-      return;
-    }
+    if (error.name === 'ZodError') { res.status(400).json({ error: 'Datos inválidos', detalles: error.errors }); return; }
     console.error(error);
     res.status(500).json({ error: 'Error al crear evento' });
   }
 });
 
-// POST /api/eventos/lote - Crear evento para múltiples animales (vacunación masiva)
+// POST /api/eventos/lote - SOLO MVZ y ADMIN
 router.post('/lote', async (req: AuthRequest, res: Response) => {
   try {
-    const { animalIds, ...eventoData } = req.body;
+    if (req.userRol !== 'MVZ' && req.userRol !== 'ADMIN') {
+      res.status(403).json({ error: 'Solo un Médico Veterinario (MVZ) puede registrar eventos sanitarios' });
+      return;
+    }
 
+    const { animalIds, ...eventoData } = req.body;
     if (!Array.isArray(animalIds) || animalIds.length === 0) {
       res.status(400).json({ error: 'Se requiere al menos un animal' });
       return;
@@ -206,36 +148,29 @@ router.post('/lote', async (req: AuthRequest, res: Response) => {
     const eventos = await prisma.$transaction(
       animalIds.map((animalId: string) =>
         prisma.eventoSanitario.create({
-          data: {
-            ...eventoData,
-            animalId,
-            fecha: new Date(eventoData.fecha),
-            proximaFecha: eventoData.proximaFecha ? new Date(eventoData.proximaFecha) : undefined,
-          },
+          data: { ...eventoData, animalId, fecha: new Date(eventoData.fecha), proximaFecha: eventoData.proximaFecha ? new Date(eventoData.proximaFecha) : undefined },
         })
       )
     );
 
-    res.status(201).json({
-      message: `${eventos.length} eventos creados exitosamente`,
-      total: eventos.length,
-    });
+    res.status(201).json({ message: `${eventos.length} eventos creados exitosamente`, total: eventos.length });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al crear eventos en lote' });
   }
 });
 
-// DELETE /api/eventos/:id
+// DELETE /api/eventos/:id - SOLO MVZ y ADMIN
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    if (req.userRol !== 'MVZ' && req.userRol !== 'ADMIN') {
+      res.status(403).json({ error: 'Solo MVZ o Admin pueden eliminar eventos' });
+      return;
+    }
     await prisma.eventoSanitario.delete({ where: { id: req.params.id } });
     res.json({ message: 'Evento eliminado' });
   } catch (error: any) {
-    if (error.code === 'P2025') {
-      res.status(404).json({ error: 'Evento no encontrado' });
-      return;
-    }
+    if (error.code === 'P2025') { res.status(404).json({ error: 'Evento no encontrado' }); return; }
     console.error(error);
     res.status(500).json({ error: 'Error al eliminar evento' });
   }

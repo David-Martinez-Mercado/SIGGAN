@@ -1,27 +1,18 @@
 #!/bin/bash
-# Script para subir cambios en SIGGAN con submódulos
+# Script para subir cambios en SIGGAN
 # Repositorio principal: https://github.com/David-Martinez-Mercado/SIGGAN
 # Rama: main
 
 # Mensaje de commit
-COMMIT_MSG="Día 4: Frontend React, cuentas por propietario, folios automáticos, búsqueda historial"
+COMMIT_MSG="Día 5: Página de Eventos Sanitarios, Completar páginas placeholder, Marketplace"
 
-echo "=== Subiendo cambios en Backend ==="
-cd Backend || exit
-git add .
-git commit -m "$COMMIT_MSG"
-git push origin main
+echo "=== Agregando todos los cambios (incluyendo Backend y Frontend) ==="
+git add -A
 
-echo "=== Subiendo cambios en Frontend/siggan-web ==="
-cd ../Frontend/siggan-web || exit
-git add .
+echo "=== Creando commit ==="
 git commit -m "$COMMIT_MSG"
-git push origin main
 
-echo "=== Actualizando repo principal ==="
-cd ../..
-git add Backend Frontend/siggan-web
-git commit -m "$COMMIT_MSG"
+echo "=== Subiendo al repositorio principal ==="
 git push origin main
 
 echo "=== Todo listo 🚀 ==="

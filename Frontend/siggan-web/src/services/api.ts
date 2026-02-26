@@ -34,6 +34,7 @@ export const getAnimalPorArete = (arete: string) => api.get(`/animales/arete/${a
 export const createAnimal = (data: any) => api.post('/animales', data);
 export const updateAnimal = (id: string, data: any) => api.put(`/animales/${id}`, data);
 export const cambiarProposito = (id: string, proposito: string) => api.put(`/animales/${id}/proposito`, { proposito });
+export const cambiarEstatus = (id: string, estatusSanitario: string, observaciones?: string) => api.put(`/animales/${id}/estatus`, { estatusSanitario, observaciones });
 export const deleteAnimal = (id: string) => api.delete(`/animales/${id}`);
 
 // Propietarios
@@ -65,5 +66,14 @@ export const estadisticasRazas = () => api.get('/busqueda/estadisticas/razas');
 
 // Dashboard
 export const getDashboardStats = () => api.get('/dashboard/stats');
+
+// Marketplace
+export const getMarketplace = () => api.get('/marketplace');
+export const getMisOfertas = () => api.get('/marketplace/mis-ofertas');
+export const publicarAnimal = (data: any) => api.post('/marketplace', data);
+export const ofertarAnimal = (id: string, precioOfertado: number) => api.put(`/marketplace/${id}/ofertar`, { precioOfertado });
+export const aceptarOferta = (id: string) => api.put(`/marketplace/${id}/aceptar`);
+export const rechazarOferta = (id: string) => api.put(`/marketplace/${id}/rechazar`);
+export const despublicarOferta = (id: string) => api.delete(`/marketplace/${id}`);
 
 export default api;

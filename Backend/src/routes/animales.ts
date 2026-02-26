@@ -252,7 +252,33 @@ router.put('/:id/proposito', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// PUT /api/animales/:id
+// PUT /api/animales/:id/estatus - Cambiar estatus sanitario (SOLO MVZ o ADMIN)
+router.put('/:id/estatus', async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.userRol !== 'MVZ' && req.userRol !== 'ADMIN') {
+      res.status(403).json({ error: 'Solo un MVZ o Administrador puede cambiar el estatus sanitario' });
+      return;
+    }
+    const { estatusSanitario, observaciones } = req.body;
+    const VALIDOS = ['SANO', 'EN_PRUEBA', 'REACTOR', 'CUARENTENADO'];
+    if (!estatusSanitario || !VALIDOS.includes(estatusSanitario)) {
+      res.status(400).json({ error: `Estatus inválido. Opciones: ${VALIDOS.join(', ')}` }); return;
+    }
+    const animal = await prisma.animal.findUnique({ where: { id: req.params.id } });
+    if (!animal) { res.status(404).json({ error: 'Animal no encontrado' }); return; }
+
+    const actualizado = await prisma.animal.update({
+      where: { id: req.params.id }, data: { estatusSanitario },
+      include: { propietario: { select: { id: true, nombre: true, apellidos: true } }, upp: { select: { id: true, claveUPP: true, nombre: true } } },
+    });
+    await prisma.eventoSanitario.create({
+      data: { animalId: req.params.id, tipo: 'INSPECCION', descripcion: `Cambio de estatus: ${animal.estatusSanitario} → ${estatusSanitario}`, fecha: new Date(), resultado: estatusSanitario, mvzResponsable: observaciones || undefined },
+    });
+    res.json({ message: `Estatus actualizado: ${animal.estatusSanitario} → ${estatusSanitario}`, animal: actualizado });
+  } catch (error) { console.error(error); res.status(500).json({ error: 'Error al cambiar estatus' }); }
+});
+
+// PUT /api/animales/:id - Update general
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
     if (req.userRol === 'PRODUCTOR') {
