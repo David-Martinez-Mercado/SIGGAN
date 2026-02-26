@@ -37,6 +37,10 @@ npm run dev
 | Admin | admin@siggan.mx | siggan2026 |
 | MVZ | mvz@siggan.mx | siggan2026 |
 | Productor | productor@siggan.mx | siggan2026 |
+| Productor | juan.martinez@siggan.mx | siggan2026 |
+| Productor | maria.garcia@siggan.mx | siggan2026 |
+| Productor | pedro.rodriguez@siggan.mx | siggan2026 |
+| Productor | asociacion.santiago@siggan.mx | siggan2026 |
 
 ## Endpoints principales
 
