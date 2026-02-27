@@ -225,6 +225,35 @@ model LecturaIoT {
   @@map("lecturas_iot")
 }
 
+// ==================== NODOS IoT ====================
+model NodoIoT {
+  id              String   @id @default(uuid())
+  nodoId          String   @unique // ESP32-001, LORA-002, etc
+  tipo            String   // ESP32, ARDUINO, GATEWAY
+  ubicacion       String?  // Potrero Norte, Corral 1
+  bateria         Float    @default(100)
+  ultimaLectura   DateTime?
+  activo          Boolean  @default(true)
+  uppId           String?
+
+  @@map("nodos_iot")
+}
+
+// ==================== ALERTAS IoT ====================
+model AlertaIoT {
+  id              String   @id @default(uuid())
+  tipo            String   // TEMPERATURA_ALTA, FUERA_GEOCERCA, BATERIA_BAJA, SIN_SEÑAL
+  mensaje         String
+  severidad       String   @default("MEDIA") // BAJA, MEDIA, ALTA, CRITICA
+  leida           Boolean  @default(false)
+  animalId        String?
+  nodoId          String?
+  datos           Json?    // datos extra: temp, coords, etc
+  createdAt       DateTime @default(now())
+
+  @@map("alertas_iot")
+}
+
 // ==================== MARKETPLACE ====================
 model OfertaMarketplace {
   id              String   @id @default(uuid())

@@ -26,6 +26,14 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const { buscar, municipio, estatus, propietarioId } = req.query;
     const where: any = { activa: true };
 
+    // PRODUCTOR solo ve sus UPPs
+    if (req.userRol === 'PRODUCTOR') {
+      const prop = await prisma.propietario.findFirst({ where: { usuarioId: req.userId }, select: { id: true } });
+      if (prop) where.propietarioId = prop.id;
+    } else if (propietarioId) {
+      where.propietarioId = propietarioId as string;
+    }
+
     if (buscar) {
       where.OR = [
         { claveUPP: { contains: buscar as string, mode: 'insensitive' } },
@@ -34,7 +42,6 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     }
     if (municipio) where.municipio = municipio as string;
     if (estatus) where.estatusSanitario = estatus as string;
-    if (propietarioId) where.propietarioId = propietarioId as string;
 
     const upps = await prisma.uPP.findMany({
       where,

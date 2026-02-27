@@ -12,6 +12,8 @@ import UPPsPage from './pages/UPPsPage';
 import EventosPage from './pages/EventosPage';
 import AretesPage from './pages/AretesPage';
 import MarketplacePage from './pages/MarketplacePage';
+import FormulariosPage from './pages/FormulariosPage';
+import IoTPage from './pages/IoTPage';
 import BusquedaPage from './pages/BusquedaPage';
 
 const App: React.FC = () => (
@@ -29,6 +31,8 @@ const App: React.FC = () => (
           <Route path="eventos" element={<EventosPage />} />
           <Route path="aretes" element={<AretesPage />} />
           <Route path="marketplace" element={<MarketplacePage />} />
+          <Route path="formularios" element={<FormulariosPage />} />
+          <Route path="iot" element={<IoTPage />} />
           <Route path="busqueda" element={<BusquedaPage />} />
         </Route>
       </Routes>

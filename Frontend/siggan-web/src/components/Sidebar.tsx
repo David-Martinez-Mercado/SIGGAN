@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Bug, Users, MapPin, Syringe, Tags, Search, ShoppingCart, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Bug, Users, MapPin, Syringe, Tags, Search, ShoppingCart, FileText, Radio, LogOut, Menu, X } from 'lucide-react';
 
 const Sidebar: React.FC<{ isOpen: boolean; setIsOpen: (o: boolean) => void }> = ({ isOpen, setIsOpen }) => {
   const { user, logout } = useAuth();
@@ -15,6 +15,8 @@ const Sidebar: React.FC<{ isOpen: boolean; setIsOpen: (o: boolean) => void }> = 
     { to: '/eventos', icon: Syringe, label: 'Eventos Sanitarios' },
     { to: '/aretes', icon: Tags, label: 'Aretes' },
     { to: '/marketplace', icon: ShoppingCart, label: 'Marketplace' },
+    { to: '/formularios', icon: FileText, label: 'SENASICA' },
+    { to: '/iot', icon: Radio, label: 'IoT & Sensores' },
     { to: '/busqueda', icon: Search, label: 'Búsqueda' },
   ];
 
@@ -32,7 +34,7 @@ const Sidebar: React.FC<{ isOpen: boolean; setIsOpen: (o: boolean) => void }> = 
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map(item => (
-            <NavLink key={item.to} to={item.to} onClick={() => setIsOpen(false)}
+            <NavLink key={item.to} to={item.to} onClick={() => setIsOpen(false)} end={item.to === '/'}
               className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-emerald-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
               <item.icon size={18} />{item.label}
             </NavLink>
