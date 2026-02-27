@@ -4,7 +4,7 @@
 # Rama: main
 
 # Mensaje de commit
-COMMIT_MSG="Día 5: Página de Eventos Sanitarios, Completar páginas placeholder, Marketplace"
+COMMIT_MSG="Día 6"
 
 echo "=== Agregando todos los cambios (incluyendo Backend y Frontend) ==="
 git add -A
