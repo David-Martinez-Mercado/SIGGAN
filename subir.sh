@@ -4,7 +4,7 @@
 # Rama: main
 
 # Mensaje de commit
-COMMIT_MSG="Día 6"
+COMMIT_MSG="Día 7: Dashboard mejorado, Notificaciones, Sidebar"
 
 echo "=== Agregando todos los cambios (incluyendo Backend y Frontend) ==="
 git add -A

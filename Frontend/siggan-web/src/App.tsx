@@ -14,6 +14,7 @@ import AretesPage from './pages/AretesPage';
 import MarketplacePage from './pages/MarketplacePage';
 import FormulariosPage from './pages/FormulariosPage';
 import IoTPage from './pages/IoTPage';
+import NotificacionesPage from './pages/NotificacionesPage';
 import BusquedaPage from './pages/BusquedaPage';
 
 const App: React.FC = () => (
@@ -33,6 +34,7 @@ const App: React.FC = () => (
           <Route path="marketplace" element={<MarketplacePage />} />
           <Route path="formularios" element={<FormulariosPage />} />
           <Route path="iot" element={<IoTPage />} />
+          <Route path="notificaciones" element={<NotificacionesPage />} />
           <Route path="busqueda" element={<BusquedaPage />} />
         </Route>
       </Routes>
