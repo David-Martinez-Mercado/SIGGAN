@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script para subir cambios en SIGGAN
-# Repositorio principal: https://github.com/David-Martinez-Mercado/SIGGAN
+# Repositorio principal: https://github.com/David-Martinez-Mercado/SIGGAN.git
 # Rama: main
 
 # Mensaje de commit
