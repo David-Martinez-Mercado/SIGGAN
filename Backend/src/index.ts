@@ -15,6 +15,7 @@ import busquedaRoutes from './routes/busqueda';
 import marketplaceRoutes from './routes/marketplace';
 import formulariosRoutes from './routes/formularios';
 import iotRoutes from './routes/iot';
+import biometriaRoutes from './routes/biometria';
 import swaggerRoutes from './routes/swagger';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -22,7 +23,8 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'SIGGAN API', version: '1.0.0', timestamp: new Date().toISOString() });
@@ -40,6 +42,7 @@ app.use('/api/busqueda', busquedaRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/formularios', formulariosRoutes);
 app.use('/api/iot', iotRoutes);
+app.use('/api/biometria', biometriaRoutes);
 
 app.use(errorHandler);
 app.use((req, res) => { res.status(404).json({ error: `Ruta no encontrada: ${req.method} ${req.path}` }); });

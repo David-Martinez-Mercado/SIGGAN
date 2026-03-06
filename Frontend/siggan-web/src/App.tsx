@@ -15,6 +15,8 @@ import MarketplacePage from './pages/MarketplacePage';
 import FormulariosPage from './pages/FormulariosPage';
 import IoTPage from './pages/IoTPage';
 import NotificacionesPage from './pages/NotificacionesPage';
+import BiometriaPage from './pages/BiometriaPage';
+import TrazabilidadPage from './pages/TrazabilidadPage';
 import BusquedaPage from './pages/BusquedaPage';
 
 const App: React.FC = () => (
@@ -22,6 +24,8 @@ const App: React.FC = () => (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* Trazabilidad es pública - sin Layout/login */}
+        <Route path="/trazabilidad/:arete" element={<TrazabilidadPage />} />
         <Route path="/" element={<Layout />}>
           <Route index element={<DashboardPage />} />
           <Route path="animales" element={<AnimalesPage />} />
@@ -35,6 +39,7 @@ const App: React.FC = () => (
           <Route path="formularios" element={<FormulariosPage />} />
           <Route path="iot" element={<IoTPage />} />
           <Route path="notificaciones" element={<NotificacionesPage />} />
+          <Route path="biometria" element={<BiometriaPage />} />
           <Route path="busqueda" element={<BusquedaPage />} />
         </Route>
       </Routes>

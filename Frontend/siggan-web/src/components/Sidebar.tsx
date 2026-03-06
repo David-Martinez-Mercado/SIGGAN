@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { LayoutDashboard, Bug, Users, MapPin, Syringe, Tags, Search, ShoppingCart, FileText, Radio, Bell, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Bug, Users, MapPin, Syringe, Tags, Search, ShoppingCart, FileText, Radio, Bell, Fingerprint, LogOut, Menu, X } from 'lucide-react';
 
 const Sidebar: React.FC<{ isOpen: boolean; setIsOpen: (o: boolean) => void }> = ({ isOpen, setIsOpen }) => {
   const { user, logout } = useAuth();
@@ -11,13 +11,10 @@ const Sidebar: React.FC<{ isOpen: boolean; setIsOpen: (o: boolean) => void }> = 
 
   useEffect(() => {
     const fetchNotifs = async () => {
-      try {
-        const res = await api.get('/dashboard/notificaciones');
-        setNoLeidas(res.data.noLeidas || 0);
-      } catch { /* ignore */ }
+      try { const res = await api.get('/dashboard/notificaciones'); setNoLeidas(res.data.noLeidas || 0); } catch { /* */ }
     };
     fetchNotifs();
-    const interval = setInterval(fetchNotifs, 30000); // cada 30s
+    const interval = setInterval(fetchNotifs, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -31,6 +28,7 @@ const Sidebar: React.FC<{ isOpen: boolean; setIsOpen: (o: boolean) => void }> = 
     { to: '/marketplace', icon: ShoppingCart, label: 'Marketplace' },
     { to: '/formularios', icon: FileText, label: 'SENASICA' },
     { to: '/iot', icon: Radio, label: 'IoT & Sensores' },
+    { to: '/biometria', icon: Fingerprint, label: 'Biometría & QR' },
     { to: '/notificaciones', icon: Bell, label: 'Notificaciones', badge: noLeidas },
     { to: '/busqueda', icon: Search, label: 'Búsqueda' },
   ];
