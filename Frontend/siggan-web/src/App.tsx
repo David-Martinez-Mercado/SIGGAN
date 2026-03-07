@@ -15,14 +15,22 @@ import MarketplacePage from './pages/MarketplacePage';
 import FormulariosPage from './pages/FormulariosPage';
 import IoTPage from './pages/IoTPage';
 import NotificacionesPage from './pages/NotificacionesPage';
+import BiometriaPage from './pages/BiometriaPage';
+import TrazabilidadPage from './pages/TrazabilidadPage';
 import BusquedaPage from './pages/BusquedaPage';
+import RegistroPage from './pages/RegistroPage';
+import AdminUsuariosPage from './pages/AdminUsuariosPage';
 
 const App: React.FC = () => (
   <AuthProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* Trazabilidad es pública - sin Layout/login */}
+        <Route path="/trazabilidad/:arete" element={<TrazabilidadPage />} />
+        <Route path="/registro" element={<RegistroPage />} />
         <Route path="/" element={<Layout />}>
+          <Route path="admin/usuarios" element={<AdminUsuariosPage />} />
           <Route index element={<DashboardPage />} />
           <Route path="animales" element={<AnimalesPage />} />
           <Route path="animales/nuevo" element={<AnimalNuevoPage />} />
@@ -35,6 +43,7 @@ const App: React.FC = () => (
           <Route path="formularios" element={<FormulariosPage />} />
           <Route path="iot" element={<IoTPage />} />
           <Route path="notificaciones" element={<NotificacionesPage />} />
+          <Route path="biometria" element={<BiometriaPage />} />
           <Route path="busqueda" element={<BusquedaPage />} />
         </Route>
       </Routes>

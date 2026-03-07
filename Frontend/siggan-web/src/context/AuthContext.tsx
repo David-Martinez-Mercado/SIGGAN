@@ -7,6 +7,16 @@ interface User {
   nombre: string;
   apellidos: string;
   rol: string;
+  esSuperAdmin?: boolean;
+  esPrimario?: boolean;
+}
+
+interface User {
+  id: string;
+  email: string;
+  nombre: string;
+  apellidos: string;
+  rol: string;
 }
 
 interface AuthContextType {

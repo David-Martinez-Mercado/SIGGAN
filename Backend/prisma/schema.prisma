@@ -9,30 +9,100 @@ datasource db {
 
 // ==================== USUARIOS ====================
 model Usuario {
-  id            String   @id @default(uuid())
-  email         String   @unique
+  id            String        @id @default(uuid())
+  email         String        @unique
   password      String
   nombre        String
   apellidos     String
-  rol           Rol      @default(PRODUCTOR)
+  rol           Rol           @default(PRODUCTOR)
   telefono      String?
-  activo        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  estatus       EstatusUsuario @default(PENDIENTE)
+  activo        Boolean       @default(true)
+
+  // Campos comunes
+  rfc           String?
+  curp          String?
+  direccion     String?
+  municipio     String?
+  estado        String?       @default("Durango")
+
+  // Campos de Agricultor/Propietario
+  // (documentos se guardan como rutas de archivo en DocumentoUsuario)
+
+  // Campos de MVZ
+  cedulaProfesional   String?
+  credencialSenasica  String?
+  vigenciaCredencial  DateTime?
+  ddr                 String?   // Distrito de Desarrollo Rural
+
+  // Admin
+  creadoPorId   String?       // Quién lo creó (para Super Admin → Admin)
+  creadoPor     Usuario?      @relation("CreadorAdmin", fields: [creadoPorId], references: [id])
+  adminsCreados Usuario[]     @relation("CreadorAdmin")
+  esSuperAdmin  Boolean       @default(false)
+  esPrimario    Boolean       @default(false)  // Solo 1: el Super Admin original
+
+  // Suspensión
+  motivoSuspension  String?
+  tipoSuspension    TipoSuspension?
+  suspendidoAt      DateTime?
+  suspendidoPorId   String?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   // Relaciones
   propiedades   Propietario[]
   formularios   Formulario[]
+  documentos    DocumentoUsuario[]
 
   @@map("usuarios")
 }
 
 enum Rol {
+  SUPER_ADMIN
   ADMIN
   PRODUCTOR
   MVZ
-  AUTORIDAD
-  OPERADOR
+}
+
+enum EstatusUsuario {
+  PENDIENTE
+  ACTIVO
+  SUSPENDIDO_TEMPORAL
+  SUSPENDIDO_DEFINITIVO
+}
+
+enum TipoSuspension {
+  TEMPORAL
+  DEFINITIVO
+}
+
+// ==================== DOCUMENTOS DE USUARIO ====================
+model DocumentoUsuario {
+  id            String   @id @default(uuid())
+  tipo          TipoDocumento
+  nombreArchivo String
+  rutaArchivo   String
+  mimeType      String?
+  size          Int?
+  createdAt     DateTime @default(now())
+
+  usuarioId     String
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@map("documentos_usuario")
+}
+
+enum TipoDocumento {
+  INE
+  EFIRMA_CER
+  EFIRMA_KEY
+  REGISTRO_SAT
+  DOCUMENTO_PROPIEDAD
+  RECIBO_COMPROBANTE
+  CREDENCIAL_SENASICA
+  CEDULA_PROFESIONAL
 }
 
 // ==================== PROPIETARIOS ====================
@@ -49,7 +119,6 @@ model Propietario {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Relaciones
   usuarioId     String?
   usuario       Usuario?  @relation(fields: [usuarioId], references: [id])
   upps          UPP[]
@@ -60,25 +129,24 @@ model Propietario {
   @@map("propietarios")
 }
 
-// ==================== UPP (Unidad de Producción Pecuaria) ====================
+// ==================== UPP ====================
 model UPP {
   id              String   @id @default(uuid())
-  claveUPP        String   @unique  // 12 dígitos SINIIGA
+  claveUPP        String   @unique
   nombre          String
   direccion       String?
   municipio       String
   estado          String   @default("Durango")
   latitud         Float?
   longitud        Float?
-  tipoExplotacion String?  // Cría, Engorda, Doble propósito, Lechera
-  estatusSanitario String  @default("EN_PROCESO") // LIBRE, EN_PROCESO, CUARENTENADO
+  tipoExplotacion String?
+  estatusSanitario String  @default("EN_PROCESO")
   superficieHa    Float?
   capacidadAnimales Int?
   activa          Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  // Relaciones
   propietarioId   String
   propietario     Propietario @relation(fields: [propietarioId], references: [id])
   animales        Animal[]
@@ -89,28 +157,25 @@ model UPP {
 // ==================== ANIMALES ====================
 model Animal {
   id              String   @id @default(uuid())
-  areteNacional   String   @unique  // Arete amarillo SINIIGA
-  areteExportacion String? @unique  // Arete azul (si aplica)
-  rfidTag         String?  @unique  // Chip RFID
+  areteNacional   String   @unique
+  areteExportacion String? @unique
+  rfidTag         String?  @unique
   nombre          String?
   raza            String
   sexo            Sexo
   fechaNacimiento DateTime
   color           String?
   peso            Float?
-  estatusSanitario String  @default("SANO") // SANO, EN_PRUEBA, REACTOR, CUARENTENADO
-  proposito       String?  // Cría, Engorda, Leche, Exportación
+  estatusSanitario String  @default("SANO")
+  proposito       String?
   activo          Boolean  @default(true)
-  irisHash        String?  // Hash del código biométrico de iris
-  
-  // Blockchain (se llena cuando se integre)
+  irisHash        String?
   blockchainTokenId String?
   blockchainTxHash  String?
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  // Relaciones
   propietarioId   String
   propietario     Propietario @relation(fields: [propietarioId], references: [id])
   uppId           String
@@ -120,7 +185,6 @@ model Animal {
   lecturas        LecturaIoT[]
   publicaciones   OfertaMarketplace[]
 
-  // Madre y padre (opcionales)
   madreId         String?
   madre           Animal?  @relation("Genealogia", fields: [madreId], references: [id])
   crias           Animal[] @relation("Genealogia")
@@ -139,15 +203,14 @@ model EventoSanitario {
   tipo            TipoEvento
   descripcion     String?
   fecha           DateTime
-  resultado       String?  // NEGATIVO, POSITIVO, PENDIENTE
-  mvzResponsable  String?  // Nombre del MVZ
+  resultado       String?
+  mvzResponsable  String?
   cedulaMvz       String?
   observaciones   String?
-  lote            String?  // Lote de vacuna/reactivo
-  proximaFecha    DateTime? // Próxima vacunación/revisión
+  lote            String?
+  proximaFecha    DateTime?
   createdAt       DateTime @default(now())
 
-  // Relaciones
   animalId        String
   animal          Animal   @relation(fields: [animalId], references: [id])
 
@@ -168,9 +231,9 @@ enum TipoEvento {
 // ==================== HISTORIAL DE ARETES ====================
 model HistorialArete {
   id              String   @id @default(uuid())
-  tipoArete       String   // NACIONAL, EXPORTACION, RFID
+  tipoArete       String
   numeroArete     String
-  accion          String   // ASIGNADO, BAJA, REEMPLAZO, TRANSFERIDO
+  accion          String
   motivo          String?
   fecha           DateTime @default(now())
 
@@ -184,16 +247,15 @@ model HistorialArete {
 model Formulario {
   id              String   @id @default(uuid())
   tipo            TipoFormulario
-  folio           String   @unique  // UUID como folio
-  datos           Json     // Datos del formulario en JSON
-  estatus         String   @default("BORRADOR") // BORRADOR, ENVIADO, APROBADO, RECHAZADO
+  folio           String   @unique
+  datos           Json
+  estatus         String   @default("BORRADOR")
   pdfUrl          String?
   qrCode          String?
   hashBlockchain  String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  // Relaciones
   usuarioId       String
   usuario         Usuario  @relation(fields: [usuarioId], references: [id])
 
@@ -211,12 +273,12 @@ enum TipoFormulario {
 // ==================== LECTURAS IoT ====================
 model LecturaIoT {
   id              String   @id @default(uuid())
-  nodoId          String   // ID del nodo Arduino/ESP32
+  nodoId          String
   latitud         Float
   longitud        Float
-  temperatura     Float?   // Temperatura corporal
-  rssi            Int?     // Señal LoRa
-  bateria         Float?   // % batería del dispositivo
+  temperatura     Float?
+  rssi            Int?
+  bateria         Float?
   timestamp       DateTime @default(now())
 
   animalId        String
@@ -225,33 +287,36 @@ model LecturaIoT {
   @@map("lecturas_iot")
 }
 
-// ==================== NODOS IoT ====================
-model NodoIoT {
-  id              String   @id @default(uuid())
-  nodoId          String   @unique // ESP32-001, LORA-002, etc
-  tipo            String   // ESP32, ARDUINO, GATEWAY
-  ubicacion       String?  // Potrero Norte, Corral 1
-  bateria         Float    @default(100)
-  ultimaLectura   DateTime?
-  activo          Boolean  @default(true)
-  uppId           String?
-
-  @@map("nodos_iot")
-}
-
 // ==================== ALERTAS IoT ====================
 model AlertaIoT {
   id              String   @id @default(uuid())
-  tipo            String   // TEMPERATURA_ALTA, FUERA_GEOCERCA, BATERIA_BAJA, SIN_SEÑAL
+  tipo            String
   mensaje         String
-  severidad       String   @default("MEDIA") // BAJA, MEDIA, ALTA, CRITICA
+  severidad       String   @default("MEDIA")
   leida           Boolean  @default(false)
   animalId        String?
   nodoId          String?
-  datos           Json?    // datos extra: temp, coords, etc
-  createdAt       DateTime @default(now())
+  valor           Float?
+  umbral          Float?
+  timestamp       DateTime @default(now())
 
   @@map("alertas_iot")
+}
+
+// ==================== NODOS IoT ====================
+model NodoIoT {
+  id              String   @id @default(uuid())
+  nombre          String
+  tipo            String   @default("ESP32_LORA")
+  ubicacion       String?
+  latitud         Float?
+  longitud        Float?
+  bateria         Float?   @default(100)
+  activo          Boolean  @default(true)
+  ultimaConexion  DateTime?
+  createdAt       DateTime @default(now())
+
+  @@map("nodos_iot")
 }
 
 // ==================== MARKETPLACE ====================
@@ -265,7 +330,6 @@ model OfertaMarketplace {
   fechaPublicacion DateTime @default(now())
   fechaCierre     DateTime?
 
-  // Relaciones
   animalId        String
   animal          Animal      @relation(fields: [animalId], references: [id])
   vendedorId      String
