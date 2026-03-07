@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
+import RegistroPage from './pages/RegistroPage';
 import DashboardPage from './pages/DashboardPage';
 import AnimalesPage from './pages/AnimalesPage';
 import AnimalDetallePage from './pages/AnimalDetallePage';
@@ -18,7 +19,6 @@ import NotificacionesPage from './pages/NotificacionesPage';
 import BiometriaPage from './pages/BiometriaPage';
 import TrazabilidadPage from './pages/TrazabilidadPage';
 import BusquedaPage from './pages/BusquedaPage';
-import RegistroPage from './pages/RegistroPage';
 import AdminUsuariosPage from './pages/AdminUsuariosPage';
 
 const App: React.FC = () => (
@@ -26,15 +26,11 @@ const App: React.FC = () => (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        {/* Trazabilidad es pública - sin Layout/login */}
-        <Route path="/trazabilidad/:arete" element={<TrazabilidadPage />} />
-<<<<<<< HEAD
         <Route path="/registro" element={<RegistroPage />} />
-=======
->>>>>>> 2d9e1aa09eff050b6e870d2a7119b358066e6313
+        <Route path="/trazabilidad/:arete" element={<TrazabilidadPage />} />
         <Route path="/" element={<Layout />}>
-          <Route path="admin/usuarios" element={<AdminUsuariosPage />} />
           <Route index element={<DashboardPage />} />
+          <Route path="admin/usuarios" element={<AdminUsuariosPage />} />
           <Route path="animales" element={<AnimalesPage />} />
           <Route path="animales/nuevo" element={<AnimalNuevoPage />} />
           <Route path="animales/:id" element={<AnimalDetallePage />} />

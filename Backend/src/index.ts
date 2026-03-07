@@ -27,12 +27,8 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-<<<<<<< HEAD
-
 app.use('/api/documentos', documentosRoutes);
 app.use('/api/admin', adminRoutes);
-=======
->>>>>>> 2d9e1aa09eff050b6e870d2a7119b358066e6313
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'SIGGAN API', version: '1.0.0', timestamp: new Date().toISOString() });
