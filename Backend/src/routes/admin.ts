@@ -88,6 +88,7 @@ router.post('/usuarios/:id/aprobar', ...adminOnly, async (req: AuthRequest, res:
           data: {
             nombre: actualizado.nombre,
             apellidos: actualizado.apellidos,
+            email: actualizado.email,
             curp: actualizado.curp,
             rfc: actualizado.rfc,
             telefono: actualizado.telefono,

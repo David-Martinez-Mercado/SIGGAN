@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getAnimal, cambiarProposito, cambiarEstatus } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, Syringe, Tag, MapPin, Thermometer, RefreshCw, DollarSign, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Syringe, Tag, MapPin, Thermometer, RefreshCw, DollarSign, ShoppingCart, Download, X, FileText } from 'lucide-react';
 import api from '../services/api';
 
 const estatusColor: Record<string, string> = { SANO:'bg-green-100 text-green-800', EN_PRUEBA:'bg-yellow-100 text-yellow-800', REACTOR:'bg-red-100 text-red-800', CUARENTENADO:'bg-orange-100 text-orange-800' };
@@ -75,6 +75,68 @@ const AnimalDetallePage: React.FC = () => {
     } catch (e: any) { setMsg(e.response?.data?.error || 'Error'); }
   };
 
+  const [generandoPDF, setGenerandoPDF] = useState(false);
+  const [showActaModal, setShowActaModal] = useState(false);
+  const [mvzLista, setMvzLista] = useState<any[]>([]);
+  const [actaForm, setActaForm] = useState({ testigo: '', observaciones: '', mvzUsuarioId: '' });
+  const [actaMsg, setActaMsg] = useState('');
+
+  const abrirActaModal = async () => {
+    setActaMsg('');
+    setActaForm({ testigo: '', observaciones: '', mvzUsuarioId: '' });
+    setShowActaModal(true);
+    try {
+      const r = await api.get('/generar-documentos/mvz-lista');
+      setMvzLista(r.data || []);
+    } catch { setMvzLista([]); }
+  };
+
+  const handleActaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGenerandoPDF(true);
+    setActaMsg('');
+    try {
+      const token = localStorage.getItem('siggan_token');
+      const body: any = { animalId: id };
+      if (actaForm.testigo)     body.testigo     = actaForm.testigo;
+      if (actaForm.observaciones) body.observaciones = actaForm.observaciones;
+      if (actaForm.mvzUsuarioId)  body.mvzUsuarioId  = actaForm.mvzUsuarioId;
+
+      const res = await fetch('http://localhost:3001/api/generar-documentos/acta-nacimiento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({ error: 'Error al generar PDF' }));
+        setActaMsg(e.error || 'Error al generar el acta');
+        return;
+      }
+
+      // Si mvzUsuarioId → respuesta JSON (enviado para firma)
+      if (actaForm.mvzUsuarioId) {
+        const data = await res.json();
+        setActaMsg(`✅ ${data.message}`);
+        return;
+      }
+
+      // Sin mvzUsuarioId → respuesta PDF
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url;
+      a.download = `acta_nacimiento_${animal?.areteNacional}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowActaModal(false);
+    } catch {
+      setActaMsg('Error al generar el acta. Verifica que LibreOffice esté instalado en el servidor.');
+    } finally {
+      setGenerandoPDF(false);
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64 text-gray-500">Cargando...</div>;
   if (!animal) return <div className="text-center text-red-500 py-12">Animal no encontrado</div>;
 
@@ -132,6 +194,11 @@ const AnimalDetallePage: React.FC = () => {
             <p className="text-sm text-gray-500 mt-2">UPP</p>
             <p className="font-medium">{animal.upp?.nombre}</p>
             <p className="text-xs text-gray-400">{animal.upp?.claveUPP} • {animal.upp?.municipio}</p>
+            <button
+              onClick={abrirActaModal}
+              className="mt-3 flex items-center gap-1 text-sm bg-emerald-700 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition ml-auto">
+              <FileText size={16} /> Acta de Nacimiento
+            </button>
             {/* Solo PRODUCTOR puede vender, y solo si no tiene oferta activa */}
             {esProductor && !ofertaActiva && (
               <button onClick={() => setShowVenta(!showVenta)}
@@ -241,6 +308,81 @@ const AnimalDetallePage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* ── MODAL: Acta de Nacimiento ─────────────────────────────────────── */}
+      {showActaModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowActaModal(false)}>
+          <div className="bg-white rounded-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">📄 Acta de Nacimiento</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{animal?.areteNacional}</p>
+              </div>
+              <button onClick={() => setShowActaModal(false)}><X size={20} className="text-gray-400" /></button>
+            </div>
+
+            {actaMsg && (
+              <div className={`text-sm px-3 py-2 rounded-lg mb-4 ${actaMsg.startsWith('✅') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                {actaMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleActaSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Testigo</label>
+                <input
+                  value={actaForm.testigo}
+                  onChange={e => setActaForm(p => ({ ...p, testigo: e.target.value }))}
+                  placeholder="Nombre completo del testigo"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Médico Veterinario (para firma)</label>
+                <select
+                  value={actaForm.mvzUsuarioId}
+                  onChange={e => setActaForm(p => ({ ...p, mvzUsuarioId: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                  <option value="">— Sin MVZ (generar PDF directo) —</option>
+                  {mvzLista.map((m: any) => (
+                    <option key={m.id} value={m.id}>
+                      Dr. {m.nombre} {m.apellidos}{m.cedulaProfesional ? ` — Cédula: ${m.cedulaProfesional}` : ''}
+                    </option>
+                  ))}
+                </select>
+                {actaForm.mvzUsuarioId && (
+                  <p className="text-xs text-blue-600 mt-1">El MVZ recibirá el acta para firma. Una vez firmada, podrá descargar el PDF desde Formularios.</p>
+                )}
+                {!actaForm.mvzUsuarioId && (
+                  <p className="text-xs text-gray-400 mt-1">Sin MVZ: el PDF se genera inmediatamente sin firma electrónica.</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+                <textarea
+                  value={actaForm.observaciones}
+                  onChange={e => setActaForm(p => ({ ...p, observaciones: e.target.value }))}
+                  placeholder="Observaciones adicionales..."
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setShowActaModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={generandoPDF}
+                  className="flex items-center gap-2 px-5 py-2 bg-emerald-700 text-white rounded-lg text-sm font-medium hover:bg-emerald-800 disabled:opacity-60">
+                  <Download size={15} />
+                  {generandoPDF ? 'Procesando...' : actaForm.mvzUsuarioId ? 'Enviar al MVZ' : 'Generar PDF'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

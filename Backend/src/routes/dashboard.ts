@@ -97,12 +97,12 @@ router.get('/notificaciones', async (req: AuthRequest, res: Response) => {
     // 1. Alertas IoT no leídas
     try {
       const alertasIoT = await prisma.alertaIoT.findMany({
-        where: { leida: false }, orderBy: { createdAt: 'desc' }, take: 10,
+        where: { leida: false }, orderBy: { timestamp: 'desc' }, take: 10,
       });
       alertasIoT.forEach(a => notificaciones.push({
         id: a.id, tipo: 'IOT', icono: '📡', titulo: a.tipo.replace(/_/g, ' '),
         mensaje: a.mensaje, severidad: a.severidad,
-        fecha: a.createdAt, leida: false, accion: '/iot',
+        fecha: a.timestamp, leida: false, accion: '/iot',
       }));
     } catch (e) { /* tabla puede no existir */ }
 

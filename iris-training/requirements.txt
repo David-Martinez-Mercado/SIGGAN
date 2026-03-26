@@ -1,0 +1,14 @@
+# Pipeline de entrenamiento de iris de vacas
+# Instalar con: pip install -r requirements.txt
+
+# Visión artificial y procesamiento de imágenes
+opencv-python>=4.8.0
+Pillow>=10.0.0
+numpy>=1.24.0
+
+# Deep Learning
+torch>=2.1.0
+torchvision>=0.16.0
+
+# Utilidades
+tqdm>=4.66.0

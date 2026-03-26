@@ -18,6 +18,7 @@ const soloAdmin = (req: AuthRequest, res: Response, next: Function) => {
 const createPropietarioSchema = z.object({
   nombre: z.string().min(2),
   apellidos: z.string().min(2),
+  email: z.string().email().optional(),
   curp: z.string().length(18, 'CURP debe tener 18 caracteres').optional(),
   rfc: z.string().optional(),
   telefono: z.string().optional(),

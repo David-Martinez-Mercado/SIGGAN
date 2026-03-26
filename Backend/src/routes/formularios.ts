@@ -26,7 +26,20 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const where: any = {};
     if (tipo) where.tipo = tipo;
     if (estatus) where.estatus = estatus;
-    if (req.userRol === 'PRODUCTOR') where.usuarioId = req.userId;
+
+    // PRODUCTOR y MVZ: ven los propios + compraventas donde son vendedor/mvz asignado
+    if (req.userRol === 'PRODUCTOR') {
+      where.OR = [
+        { usuarioId: req.userId },
+        { datos: { path: ['vendedorUsuarioId'], equals: req.userId } },
+      ];
+    } else if (req.userRol === 'MVZ') {
+      where.OR = [
+        { usuarioId: req.userId },
+        { datos: { path: ['mvzUsuarioId'], equals: req.userId } },
+      ];
+    }
+
     const formularios = await prisma.formulario.findMany({
       where, orderBy: { createdAt: 'desc' },
       include: { usuario: { select: { nombre: true, apellidos: true, rol: true } } },
@@ -143,28 +156,57 @@ router.post('/constancia-zoosanitaria', async (req: AuthRequest, res: Response) 
 // POST /api/formularios/solicitud-tb-br
 router.post('/solicitud-tb-br', async (req: AuthRequest, res: Response) => {
   try {
-    const { uppId, totalAnimalesPrueba, fechaSolicitada, observaciones } = req.body;
+    const { uppId, totalAnimalesPrueba, fechaSolicitada, observaciones, mvzUsuarioId, motivo_numero } = req.body;
     if (!uppId) { res.status(400).json({ error: 'Selecciona una UPP' }); return; }
 
-    const upp = await prisma.uPP.findUnique({ where: { id: uppId }, include: { propietario: true } });
+    const [upp, animalesUPP, mvzUsuario] = await Promise.all([
+      prisma.uPP.findUnique({ where: { id: uppId }, include: { propietario: { include: { usuario: { select: { id: true } } } } } }),
+      prisma.animal.findMany({ where: { uppId, activo: true }, select: { id: true, areteNacional: true, rfidTag: true, raza: true, sexo: true, estatusSanitario: true } }),
+      mvzUsuarioId ? prisma.usuario.findUnique({ where: { id: mvzUsuarioId }, select: { id: true, nombre: true, apellidos: true } }) : Promise.resolve(null),
+    ]);
     const prop = upp?.propietario;
 
     const folio = generarFolio('SOLICITUD_TB_BR');
+    const aretesList = animalesUPP.map(a => a.areteNacional).join(', ');
     const formulario = await prisma.formulario.create({
       data: {
-        tipo: 'SOLICITUD_TB_BR', folio, usuarioId: req.userId!, estatus: 'BORRADOR',
+        tipo: 'SOLICITUD_TB_BR', folio, usuarioId: req.userId!, estatus: 'ENVIADO',
         datos: {
-          tipo: 'SOLICITUD_TB_BR', folio,
+          tipo: 'SOLICITUD_TB_BR', folio, uppId,
           propietario: prop ? `${prop.nombre} ${prop.apellidos}` : '',
           curp: prop?.curp, telefono: prop?.telefono,
           upp: upp?.nombre, claveUpp: upp?.claveUPP, municipio: upp?.municipio,
-          totalAnimalesPrueba: totalAnimalesPrueba || 0,
+          totalAnimalesPrueba: animalesUPP.length,
+          cabezas_tb: String(animalesUPP.length), cabezas_br: String(animalesUPP.length),
+          folio_aretes: aretesList, total_aretes: String(animalesUPP.length),
+          animalesIds: animalesUPP.map(a => a.id),
+          animales: animalesUPP,
+          motivo_numero: motivo_numero || null,
+          mvzUsuarioId: mvzUsuarioId || null,
+          mvzNombre: mvzUsuario ? `${mvzUsuario.nombre} ${mvzUsuario.apellidos}` : null,
           fechaSolicitada: fechaSolicitada || '', observaciones: observaciones || '',
           fechaSolicitud: new Date().toISOString(),
         },
       },
     });
-    res.status(201).json(formulario);
+
+    // Notificar a todos los animales de la UPP (el propietario lo verá en su dashboard)
+    if (animalesUPP.length > 0) {
+      await prisma.alertaIoT.createMany({
+        data: animalesUPP.map(a => ({
+          tipo: 'SOLICITUD_PRUEBA',
+          mensaje: `Se ha solicitado prueba TB/BR para tu rancho "${upp?.nombre}". Folio: ${folio}${mvzUsuario ? `. MVZ asignado: ${mvzUsuario.nombre} ${mvzUsuario.apellidos}` : ''}`,
+          severidad: 'MEDIA', animalId: a.id, leida: false,
+        })),
+        skipDuplicates: true,
+      });
+    }
+    // Alerta al admin (sin animalId específico)
+    await prisma.alertaIoT.create({
+      data: { tipo: 'SOLICITUD_PRUEBA_ADMIN', mensaje: `Nueva solicitud TB/BR para rancho "${upp?.nombre}" (${animalesUPP.length} animales). Folio: ${folio}`, severidad: 'MEDIA', leida: false },
+    });
+
+    res.status(201).json({ ...formulario, totalAnimales: animalesUPP.length });
   } catch (error) { console.error(error); res.status(500).json({ error: 'Error al crear solicitud' }); }
 });
 
@@ -199,6 +241,148 @@ router.put('/:id/estatus', async (req: AuthRequest, res: Response) => {
     const updated = await prisma.formulario.update({ where: { id: req.params.id }, data: { estatus } });
     res.json({ message: `Formulario ${estatus.toLowerCase()}`, formulario: updated });
   } catch (error) { console.error(error); res.status(500).json({ error: 'Error' }); }
+});
+
+// ─── COMPRAVENTA WORKFLOW ─────────────────────────────────────────────────────
+
+// POST /api/formularios/compraventa — Comprador inicia borrador
+router.post('/compraventa', async (req: AuthRequest, res: Response) => {
+  try {
+    const { animalId, compradorUPPId, mvzUsuarioId,
+            fechaCelebracion, lugarCelebracion, fechaEntrega,
+            precioUnitario, formaPago, clausulasAdicionales } = req.body;
+    if (!animalId) { res.status(400).json({ error: 'Se requiere animalId' }); return; }
+
+    const animal = await prisma.animal.findUnique({
+      where: { id: animalId },
+      include: { propietario: true, upp: true, madre: { select: { areteNacional: true, raza: true } } },
+    });
+    if (!animal) { res.status(404).json({ error: 'Animal no encontrado' }); return; }
+
+    const [compradorProp, compradorUsuario, vendedorUsuario, compradorUPP, mvz] = await Promise.all([
+      prisma.propietario.findFirst({ where: { usuarioId: req.userId! } }),
+      prisma.usuario.findUnique({ where: { id: req.userId! }, select: { email: true, nombre: true, apellidos: true } }),
+      prisma.usuario.findFirst({ where: { propiedades: { some: { id: animal.propietarioId } } }, select: { id: true, email: true } }),
+      compradorUPPId ? prisma.uPP.findUnique({ where: { id: compradorUPPId } }) : Promise.resolve(null),
+      mvzUsuarioId ? prisma.usuario.findUnique({ where: { id: mvzUsuarioId }, select: { id: true, nombre: true, apellidos: true, cedulaProfesional: true } }) : Promise.resolve(null),
+    ]);
+
+    const folio   = `CV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+    const numCont = `CONT-DGO-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 90000) + 10000)}`;
+    const a = animal as any;
+
+    const formulario = await prisma.formulario.create({
+      data: {
+        tipo: 'CONTRATO_COMPRAVENTA' as any,
+        folio, estatus: 'BORRADOR', usuarioId: req.userId!,
+        datos: {
+          etapa: 'borrador_comprador', numContrato: numCont,
+          animalId,
+          areteAnimal: animal.areteNacional, rfidAnimal: animal.rfidTag || null,
+          razaAnimal: animal.raza, sexoAnimal: animal.sexo, colorAnimal: animal.color || null,
+          pesoAnimal: animal.peso || null, propositoAnimal: animal.proposito || null,
+          areteMadre: animal.madre?.areteNacional || null, razaMadre: animal.madre?.raza || null,
+          aretePadre: a.areteNacionalPadre || null, razaPadre: a.razaPadre || null,
+          estatusSanitario: animal.estatusSanitario,
+          vendedorPropietarioId: animal.propietarioId,
+          vendedorUsuarioId: vendedorUsuario?.id || null,
+          vendedorEmail: vendedorUsuario?.email || null,
+          vendedorNombre: `${animal.propietario.nombre} ${animal.propietario.apellidos}`,
+          vendedorRFC: animal.propietario.rfc || null, vendedorCURP: animal.propietario.curp || null,
+          vendedorDomicilio: animal.propietario.direccion || null, vendedorTelefono: animal.propietario.telefono || null,
+          vendedorRancho: animal.upp.nombre, vendedorClaveUPP: animal.upp.claveUPP,
+          compradorUsuarioId: req.userId!,
+          compradorEmail: compradorUsuario?.email || null,
+          compradorNombre: compradorProp
+            ? `${compradorProp.nombre} ${compradorProp.apellidos}`
+            : `${compradorUsuario?.nombre} ${compradorUsuario?.apellidos}`,
+          compradorRFC: compradorProp?.rfc || null, compradorCURP: compradorProp?.curp || null,
+          compradorDomicilio: compradorProp?.direccion || null, compradorTelefono: compradorProp?.telefono || null,
+          compradorUPPId: compradorUPPId || null,
+          compradorRancho: compradorUPP?.nombre || null, compradorClaveUPP: compradorUPP?.claveUPP || null,
+          fechaCelebracion: fechaCelebracion || null, lugarCelebracion: lugarCelebracion || null,
+          fechaEntrega: fechaEntrega || null, precioUnitario: precioUnitario || null,
+          formaPago: formaPago || null, clausulasAdicionales: clausulasAdicionales || null,
+          mvzUsuarioId: mvzUsuarioId || null,
+          mvzNombre: mvz ? `${mvz.nombre} ${mvz.apellidos}` : null,
+          mvzCedula: mvz?.cedulaProfesional || null,
+        },
+      },
+    });
+    res.status(201).json({ message: `Contrato borrador creado. Folio: ${folio}`, formularioId: formulario.id, folio });
+  } catch (error) { console.error('[compraventa-crear]', error); res.status(500).json({ error: 'Error al crear contrato' }); }
+});
+
+// PUT /api/formularios/:id/compraventa/enviar — Comprador envía al vendedor
+router.put('/:id/compraventa/enviar', async (req: AuthRequest, res: Response) => {
+  try {
+    const form = await prisma.formulario.findUnique({ where: { id: req.params.id } });
+    if (!form || form.tipo !== 'CONTRATO_COMPRAVENTA' as any) { res.status(404).json({ error: 'No encontrado' }); return; }
+    if (form.usuarioId !== req.userId && req.userRol !== 'ADMIN') { res.status(403).json({ error: 'Solo el comprador puede enviar' }); return; }
+    if (form.estatus !== 'BORRADOR') { res.status(400).json({ error: 'Solo borradores pueden enviarse' }); return; }
+    const d = form.datos as any;
+    await prisma.formulario.update({ where: { id: form.id }, data: { estatus: 'ENVIADO', datos: { ...d, etapa: 'pendiente_vendedor' } } });
+    res.json({ message: 'Contrato enviado al vendedor para revisión' });
+  } catch (error) { console.error('[compraventa-enviar]', error); res.status(500).json({ error: 'Error' }); }
+});
+
+// PUT /api/formularios/:id/compraventa/aceptar — Vendedor acepta → pasa a MVZ
+router.put('/:id/compraventa/aceptar', async (req: AuthRequest, res: Response) => {
+  try {
+    const form = await prisma.formulario.findUnique({ where: { id: req.params.id } });
+    if (!form || form.tipo !== 'CONTRATO_COMPRAVENTA' as any) { res.status(404).json({ error: 'No encontrado' }); return; }
+    const d = form.datos as any;
+    if (req.userId !== d.vendedorUsuarioId && req.userRol !== 'ADMIN') { res.status(403).json({ error: 'Solo el vendedor puede aceptar' }); return; }
+    if (form.estatus !== 'ENVIADO') { res.status(400).json({ error: 'Debe estar en estado ENVIADO' }); return; }
+    await prisma.formulario.update({
+      where: { id: form.id },
+      data: { estatus: 'PENDIENTE_FIRMA', datos: { ...d, etapa: 'pendiente_mvz', vendedorAceptoEn: new Date().toISOString() } },
+    });
+    res.json({ message: 'Contrato aceptado. Enviado al MVZ para inspección.' });
+  } catch (error) { console.error('[compraventa-aceptar]', error); res.status(500).json({ error: 'Error' }); }
+});
+
+// PUT /api/formularios/:id/compraventa/rechazar — Vendedor rechaza
+router.put('/:id/compraventa/rechazar', async (req: AuthRequest, res: Response) => {
+  try {
+    const form = await prisma.formulario.findUnique({ where: { id: req.params.id } });
+    if (!form || form.tipo !== 'CONTRATO_COMPRAVENTA' as any) { res.status(404).json({ error: 'No encontrado' }); return; }
+    const d = form.datos as any;
+    if (req.userId !== d.vendedorUsuarioId && req.userRol !== 'ADMIN') { res.status(403).json({ error: 'Solo el vendedor puede rechazar' }); return; }
+    if (form.estatus !== 'ENVIADO') { res.status(400).json({ error: 'Debe estar en estado ENVIADO' }); return; }
+    await prisma.formulario.update({
+      where: { id: form.id },
+      data: { estatus: 'RECHAZADO', datos: { ...d, etapa: 'rechazado', motivoRechazo: req.body.motivo || '', rechazadoEn: new Date().toISOString() } },
+    });
+    res.json({ message: 'Contrato rechazado.' });
+  } catch (error) { console.error('[compraventa-rechazar]', error); res.status(500).json({ error: 'Error' }); }
+});
+
+// PUT /api/formularios/:id/compraventa/mvz-datos — MVZ completa datos y marca APROBADO
+router.put('/:id/compraventa/mvz-datos', async (req: AuthRequest, res: Response) => {
+  try {
+    const form = await prisma.formulario.findUnique({ where: { id: req.params.id } });
+    if (!form || form.tipo !== 'CONTRATO_COMPRAVENTA' as any) { res.status(404).json({ error: 'No encontrado' }); return; }
+    const d = form.datos as any;
+    if (req.userId !== d.mvzUsuarioId && req.userRol !== 'ADMIN') { res.status(403).json({ error: 'Solo el MVZ asignado puede completar' }); return; }
+    if (form.estatus !== 'PENDIENTE_FIRMA') { res.status(400).json({ error: 'Debe estar PENDIENTE_FIRMA' }); return; }
+    const { numCertificado, fechaCertificado, resultadoTB, fechaTB, resultadoBR, fechaBR, cedulaMVZ, vigenciaMVZ } = req.body;
+    await prisma.formulario.update({
+      where: { id: form.id },
+      data: {
+        estatus: 'APROBADO',
+        datos: {
+          ...d, etapa: 'completado',
+          numCertificado: numCertificado || null, fechaCertificado: fechaCertificado || null,
+          resultadoTB: resultadoTB || null, fechaTB: fechaTB || null,
+          resultadoBR: resultadoBR || null, fechaBR: fechaBR || null,
+          cedulaMVZ: cedulaMVZ || d.mvzCedula || null,
+          vigenciaMVZ: vigenciaMVZ || null, mvzCompletadoEn: new Date().toISOString(),
+        },
+      },
+    });
+    res.json({ message: 'Datos veterinarios guardados. Contrato listo para generar PDF.' });
+  } catch (error) { console.error('[compraventa-mvz]', error); res.status(500).json({ error: 'Error' }); }
 });
 
 // GET /api/formularios/:id/pdf - Generar documento HTML (imprimible como PDF)

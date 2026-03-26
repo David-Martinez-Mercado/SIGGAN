@@ -110,6 +110,7 @@ model Propietario {
   id            String   @id @default(uuid())
   nombre        String
   apellidos     String
+  email         String?
   curp          String?  @unique
   rfc           String?
   telefono      String?
@@ -137,6 +138,8 @@ model UPP {
   direccion       String?
   municipio       String
   estado          String   @default("Durango")
+  telefono        String?
+  email           String?
   latitud         Float?
   longitud        Float?
   tipoExplotacion String?
@@ -166,6 +169,14 @@ model Animal {
   fechaNacimiento DateTime
   color           String?
   peso            Float?
+  pesoNacimiento  Float?
+  horaNacimiento  String?
+  condicionCorporal Float?
+  areteNacionalPadre String?
+  razaPadre       String?
+  tipoParto       String?
+  esGemelar       Boolean? @default(false)
+  numCriaCamada   Int?
   estatusSanitario String  @default("SANO")
   proposito       String?
   activo          Boolean  @default(true)
@@ -206,6 +217,8 @@ model EventoSanitario {
   resultado       String?
   mvzResponsable  String?
   cedulaMvz       String?
+  rnmvz           String?
+  vigenciaMvz     String?
   observaciones   String?
   lote            String?
   proximaFecha    DateTime?
@@ -268,6 +281,20 @@ enum TipoFormulario {
   SOLICITUD_ARETES_EXPORTACION
   GUIA_REEMO
   CERTIFICADO_ZOOSANITARIO
+  ACTA_NACIMIENTO
+  CONTRATO_COMPRAVENTA
+}
+
+// ==================== POOL DE ARETES ====================
+model AreteDisponible {
+  id        String    @id @default(uuid())
+  numero    String    @unique
+  tipo      String    // 'NACIONAL' | 'EXPORTACION'
+  asignado  Boolean   @default(false)
+  animalId  String?
+  createdAt DateTime  @default(now())
+
+  @@map("aretes_disponibles")
 }
 
 // ==================== LECTURAS IoT ====================

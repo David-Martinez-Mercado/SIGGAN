@@ -29,7 +29,8 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     // PRODUCTOR solo ve sus UPPs
     if (req.userRol === 'PRODUCTOR') {
       const prop = await prisma.propietario.findFirst({ where: { usuarioId: req.userId }, select: { id: true } });
-      if (prop) where.propietarioId = prop.id;
+      if (!prop) { res.json([]); return; }
+      where.propietarioId = prop.id;
     } else if (propietarioId) {
       where.propietarioId = propietarioId as string;
     }

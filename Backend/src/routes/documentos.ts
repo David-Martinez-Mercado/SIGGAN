@@ -129,4 +129,44 @@ router.post('/upload-multiple/:usuarioId', upload.array('archivos', 10), async (
   }
 });
 
+// GET /api/documentos/:usuarioId - Listar documentos de un usuario
+router.get('/:usuarioId', async (req: any, res: Response) => {
+  try {
+    const docs = await prisma.documentoUsuario.findMany({
+      where: { usuarioId: req.params.usuarioId },
+      select: { id: true, tipo: true, nombreArchivo: true, mimeType: true, size: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ total: docs.length, documentos: docs });
+  } catch (error) { res.status(500).json({ error: 'Error' }); }
+});
+
+// GET /api/documentos/ver/:docId - Ver/descargar un documento
+router.get('/ver/:docId', async (req: any, res: Response) => {
+  try {
+    const doc = await prisma.documentoUsuario.findUnique({ where: { id: req.params.docId } });
+    if (!doc) { res.status(404).json({ error: 'Documento no encontrado' }); return; }
+
+    if (!fs.existsSync(doc.rutaArchivo)) {
+      res.status(404).json({ error: 'Archivo no encontrado en el servidor' }); return;
+    }
+
+    res.setHeader('Content-Type', doc.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${doc.nombreArchivo}"`);
+    fs.createReadStream(doc.rutaArchivo).pipe(res);
+  } catch (error) { res.status(500).json({ error: 'Error' }); }
+});
+
+// GET /api/documentos/descargar/:docId - Forzar descarga
+router.get('/descargar/:docId', async (req: any, res: Response) => {
+  try {
+    const doc = await prisma.documentoUsuario.findUnique({ where: { id: req.params.docId } });
+    if (!doc) { res.status(404).json({ error: 'No encontrado' }); return; }
+    if (!fs.existsSync(doc.rutaArchivo)) { res.status(404).json({ error: 'Archivo no existe' }); return; }
+
+    res.setHeader('Content-Disposition', `attachment; filename="${doc.nombreArchivo}"`);
+    fs.createReadStream(doc.rutaArchivo).pipe(res);
+  } catch (error) { res.status(500).json({ error: 'Error' }); }
+});
+
 export default router;

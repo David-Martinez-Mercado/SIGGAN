@@ -144,9 +144,11 @@ const AdminUsuariosPage: React.FC = () => {
                 <p className="text-xs font-semibold text-gray-500 mb-1">Documentos ({u.documentos.length})</p>
                 <div className="flex flex-wrap gap-2">
                   {u.documentos.map((d: any) => (
-                    <span key={d.id} className="flex items-center gap-1 px-2 py-1 bg-white border rounded text-xs">
+                    <a key={d.id} href={`http://localhost:3001/api/documentos/ver/${d.id}`} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-1 px-2 py-1 bg-white border rounded text-xs hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition"
+                      title={`Ver: ${d.nombreArchivo}`}>
                       <FileText size={12} className="text-blue-500" /> {d.tipo.replace(/_/g, ' ')}
-                    </span>
+                    </a>
                   ))}
                 </div>
               </div>

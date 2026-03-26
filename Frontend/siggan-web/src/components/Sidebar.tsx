@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { LayoutDashboard, Bug, Users, MapPin, Syringe, Tags, Search, ShoppingCart, FileText, Radio, Bell, Fingerprint, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Bug, Users, MapPin, Syringe, Tags, Search, ShoppingCart, FileText, Radio, Bell, Fingerprint, LogOut, Menu, X, AlertTriangle } from 'lucide-react';
 
 const Sidebar: React.FC<{ isOpen: boolean; setIsOpen: (o: boolean) => void }> = ({ isOpen, setIsOpen }) => {
   const { user, logout } = useAuth();
@@ -32,6 +32,7 @@ const Sidebar: React.FC<{ isOpen: boolean; setIsOpen: (o: boolean) => void }> = 
     { to: '/biometria', icon: Fingerprint, label: 'Biometría & QR' },
     { to: '/notificaciones', icon: Bell, label: 'Notificaciones', badge: noLeidas },
     { to: '/busqueda', icon: Search, label: 'Búsqueda' },
+    { to: '/cuarentena', icon: AlertTriangle, label: 'Cuarentenas' },
   ];
 
   const handleLogout = () => { logout(); navigate('/login'); };

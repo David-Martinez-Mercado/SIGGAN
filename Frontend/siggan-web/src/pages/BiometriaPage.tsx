@@ -19,6 +19,7 @@ const BiometriaPage: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [registros, setRegistros] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const alertRef = useRef<HTMLDivElement>(null);
 
   const fetchAnimales = async () => {
     try { const res = await api.get('/animales?limit=100'); setAnimales(res.data.data || []); } catch {}
@@ -31,6 +32,9 @@ const BiometriaPage: React.FC = () => {
   };
 
   useEffect(() => { fetchAnimales(); fetchStatus(); }, []);
+  useEffect(() => {
+    if ((msg || error) && alertRef.current) alertRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [msg, error]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -222,8 +226,10 @@ const BiometriaPage: React.FC = () => {
         </div>
       )}
 
-      {msg && <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm mb-4 flex items-center gap-2"><CheckCircle size={16} /> {msg}</div>}
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4 flex items-center gap-2"><XCircle size={16} /> {error}</div>}
+      <div ref={alertRef}>
+        {msg && <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm mb-4 flex items-center gap-2"><CheckCircle size={16} /> {msg}</div>}
+        {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4 flex items-center gap-2"><XCircle size={16} /> {error}</div>}
+      </div>
 
       {/* ==================== IRIS TAB ==================== */}
       {tab === 'iris' && (
@@ -290,7 +296,7 @@ const BiometriaPage: React.FC = () => {
             <div className="bg-gray-50 rounded-xl border p-5">
               <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2"><Activity size={16} className="text-violet-600" /> Pipeline de IA</h3>
               <div className="space-y-1.5 text-xs text-gray-600">
-                {['Validación: ¿es un ojo?', 'CLAHE + filtro bilateral', 'Hough Circles (pupila)', 'Rubber-sheet 64×512', '24 filtros Gabor', 'IrisCode 256 bits + SHA-256', 'Unicidad: buscar duplicados'].map((s, i) => (
+                {['Validación: ¿es un ojo?', 'CLAHE + redimensión 1000px', 'Hough Circles (pupila)', 'Recorte iris → 128×128', 'CNN 5 bloques + atención', 'Embedding 128 dims (ArcFace)', 'Similitud coseno + unicidad'].map((s, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span className="w-4 h-4 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-[9px]">{i + 1}</span>{s}
                   </div>
@@ -396,8 +402,8 @@ const BiometriaPage: React.FC = () => {
                         style={{ width: `${Math.max(5, resultado.verificacion.confianza)}%` }} />
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div><span className="text-gray-500 text-xs">Confianza</span><p className="font-bold">{resultado.verificacion.confianza.toFixed(1)}%</p></div>
-                      <div><span className="text-gray-500 text-xs">Hamming</span><p className="font-mono">{resultado.verificacion.distancia_hamming.toFixed(4)}</p></div>
+                      <div><span className="text-gray-500 text-xs">Confianza</span><p className="font-bold">{resultado.verificacion.confianza?.toFixed(1)}%</p></div>
+                      <div><span className="text-gray-500 text-xs">Similitud</span><p className="font-mono">{(resultado.verificacion.similitud ?? resultado.verificacion.distancia_hamming)?.toFixed(4)}</p></div>
                     </div>
                   </div>
                 )}

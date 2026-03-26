@@ -20,6 +20,8 @@ import iotRoutes from './routes/iot';
 import biometriaRoutes from './routes/biometria';
 import swaggerRoutes from './routes/swagger';
 import { errorHandler } from './middleware/errorHandler';
+import generarDocumentosRoutes from './routes/generarDocumentos';
+import cuarentenaRoutes from './routes/cuarentena';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,6 +49,8 @@ app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/formularios', formulariosRoutes);
 app.use('/api/iot', iotRoutes);
 app.use('/api/biometria', biometriaRoutes);
+app.use('/api/generar-documentos', generarDocumentosRoutes);
+app.use('/api/cuarentena', cuarentenaRoutes);
 
 app.use(errorHandler);
 app.use((req, res) => { res.status(404).json({ error: `Ruta no encontrada: ${req.method} ${req.path}` }); });

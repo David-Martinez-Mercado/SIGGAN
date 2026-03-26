@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ShoppingCart, MapPin, Heart, CheckCircle, XCircle } from 'lucide-react';
+import { ShoppingCart, MapPin, Heart, CheckCircle, XCircle, FileText } from 'lucide-react';
 import api from '../services/api';
 
 const MarketplacePage: React.FC = () => {
@@ -12,6 +12,38 @@ const MarketplacePage: React.FC = () => {
   const [tab, setTab] = useState<'catalogo' | 'mis-ofertas'>('catalogo');
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
+
+  const [generandoPDF, setGenerandoPDF] = useState(''); // ID de la oferta que se está generando
+
+  const descargarCompraventa = async (oferta: any) => {
+    if (!oferta.animalId || !oferta.compradorId) {
+      setError('No se puede generar la compraventa: faltan datos del comprador'); return;
+    }
+    setGenerandoPDF(oferta.id);
+    try {
+      const token = localStorage.getItem('siggan_token');
+      const res = await fetch('http://localhost:3001/api/generar-documentos/compraventa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ animalId: oferta.animalId, compradorId: oferta.compradorId }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({ error: 'Error al generar PDF' }));
+        setError(e.error || 'Error al generar el contrato'); return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `compraventa_${oferta.animal?.areteNacional || oferta.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('Error al generar el contrato. Verifica que LibreOffice esté instalado en el servidor.');
+    } finally {
+      setGenerandoPDF('');
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -127,6 +159,14 @@ const MarketplacePage: React.FC = () => {
                     <button onClick={() => cancelar(o.id)} className="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 text-xs rounded-lg hover:bg-red-200"><XCircle size={14} /> Rechazar</button>
                   </div>}
                   {o.estatus==='PUBLICADO' && <button onClick={() => cancelar(o.id)} className="text-xs text-red-500 hover:underline">Cancelar venta</button>}
+                  {o.estatus==='TRANSFERIDA' && (
+                    <button
+                      onClick={() => descargarCompraventa(o)}
+                      disabled={generandoPDF === o.id}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-emerald-700 text-white text-xs rounded-lg hover:bg-emerald-800 disabled:opacity-60">
+                      <FileText size={13} /> {generandoPDF === o.id ? 'Generando...' : 'Contrato PDF'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,48 +1,193 @@
 """
-SIGGAN - Microservicio de Biometría de Iris v2
-================================================
-- Validación IA de imagen (¿es un ojo?)
-- Extracción de features con Gabor (IrisCode 256 bits)
-- Unicidad: no permite registrar misma iris en 2 animales
-- Fraude: al verificar, detecta si iris no coincide con animal
+SIGGAN - Microservicio de Biometría de Iris v3 (CNN + ArcFace)
+===============================================================
+- Motor: IrisEmbeddingNet entrenada con ArcFace Loss (99.37% val_acc)
+- Embeddings L2-normalizados de 128 dims → comparación por similitud coseno
+- Validación de imagen: HoughCircles (¿es un ojo?)
+- Unicidad: no permite registrar el mismo iris en 2 animales
+- Fraude: detecta si iris no coincide con animal pero sí con otro
 - Búsqueda 1:N por iris
-- Reset de registros
 
 Puerto: 5000
 """
 
-import os, io, cv2, numpy as np, hashlib, base64, json, traceback
+import os, io, sys, cv2, numpy as np, hashlib, base64, traceback
+from pathlib import Path
 from datetime import datetime
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
+# ── PyTorch ──────────────────────────────────────────────────────────
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 app = Flask(__name__)
 CORS(app)
+
+MODEL_PATH = Path(__file__).parent / "models" / "model_iris.pth"
+
+# ==================== ARQUITECTURA CNN ====================
+
+class ConvBlock(nn.Module):
+    def __init__(self, in_ch, out_ch, kernel=3, pool=True, dropout=0.0):
+        super().__init__()
+        layers = [
+            nn.Conv2d(in_ch, out_ch, kernel_size=kernel, padding=kernel // 2, bias=False),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+        ]
+        if pool:
+            layers.append(nn.MaxPool2d(2, 2))
+        if dropout > 0:
+            layers.append(nn.Dropout2d(dropout))
+        self.block = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.block(x)
+
+
+class AtenciónEspacial(nn.Module):
+    def __init__(self, in_ch):
+        super().__init__()
+        self.conv = nn.Conv2d(in_ch, 1, kernel_size=1, bias=False)
+
+    def forward(self, x):
+        return x * torch.sigmoid(self.conv(x))
+
+
+class IrisEmbeddingNet(nn.Module):
+    def __init__(self, embedding_dim=128):
+        super().__init__()
+        self.embedding_dim = embedding_dim
+        self.features = nn.Sequential(
+            ConvBlock(1,   32, pool=True),
+            ConvBlock(32,  64, pool=True),
+            ConvBlock(64, 128, pool=True),
+            ConvBlock(128, 256, pool=True),
+            ConvBlock(256, 256, pool=False, dropout=0.25),
+        )
+        self.atencion = AtenciónEspacial(256)
+        self.gap = nn.AdaptiveAvgPool2d(1)
+        self.embedding_head = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(256, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.4),
+            nn.Linear(512, embedding_dim),
+            nn.BatchNorm1d(embedding_dim),
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.atencion(x)
+        x = self.gap(x)
+        x = self.embedding_head(x)
+        return F.normalize(x, p=2, dim=1)
+
 
 # ==================== MOTOR IA ====================
 
 class IrisAIEngine:
-    GABOR_PARAMS = [
-        {'ksize': 31, 'sigma': 4.0, 'theta': t, 'lambd': l, 'gamma': 0.5}
-        for t in np.arange(0, np.pi, np.pi / 8)
-        for l in [8, 12, 16]
-    ]
-    IRIS_CODE_BITS = 256
-    MATCH_THRESHOLD = 0.32
-    DUPLICATE_THRESHOLD = 0.28  # Más estricto para duplicados
+    MATCH_THRESHOLD     = 0.65   # similitud coseno mínima para match
+    DUPLICATE_THRESHOLD = 0.70   # más estricto para detectar duplicados
 
     def __init__(self):
-        self.gabor_filters = []
-        for p in self.GABOR_PARAMS:
-            k = cv2.getGaborKernel((p['ksize'], p['ksize']), p['sigma'], p['theta'], p['lambd'], p['gamma'], 0, ktype=cv2.CV_32F)
-            self.gabor_filters.append(k)
-        self._val_weights = {
-            'circular_symmetry': 0.25, 'dark_center_ratio': 0.20,
-            'radial_texture': 0.20, 'edge_density': 0.15,
-            'contrast_range': 0.10, 'aspect_ratio': 0.10,
-        }
-        print(f"[IA] Motor inicializado: {len(self.gabor_filters)} filtros Gabor + validador")
+        self.modelo = None
+        self._cargar_modelo()
 
+    def _cargar_modelo(self):
+        if not MODEL_PATH.exists():
+            print(f"[WARN] Modelo no encontrado en {MODEL_PATH} — usando Gabor como respaldo")
+            return
+        ckpt = torch.load(str(MODEL_PATH), map_location="cpu")
+        emb_dim = ckpt.get("embedding_dim", 128)
+        self.modelo = IrisEmbeddingNet(embedding_dim=emb_dim)
+        self.modelo.load_state_dict(ckpt["model_state_dict"])
+        self.modelo.eval()
+        print(f"[IA] Modelo CNN cargado — embedding_dim={emb_dim}  val_acc={ckpt.get('val_acc', '?')}")
+
+    # ── Preprocesado para CNN (igual que entrenamiento) ──
+    def _preprocess_cnn(self, img_bytes):
+        nparr = np.frombuffer(img_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError("No se pudo decodificar la imagen")
+
+        # Reducir resolución si viene de celular
+        h, w = img.shape[:2]
+        if max(h, w) > 1000:
+            scale = 1000 / max(h, w)
+            img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # Detectar iris con Hough
+        blurred = cv2.GaussianBlur(gray, (9, 9), 2)
+        min_r = int(min(gray.shape) * 0.10)
+        max_r = int(min(gray.shape) * 0.45)
+        circles = cv2.HoughCircles(
+            blurred, cv2.HOUGH_GRADIENT, dp=1.2,
+            minDist=int(min(gray.shape) * 0.3),
+            param1=60, param2=30, minRadius=min_r, maxRadius=max_r,
+        )
+
+        if circles is not None:
+            cx, cy, r = np.round(circles[0][0]).astype(int)
+            margen = int(r * 1.2)
+            x1 = max(0, cx - margen); y1 = max(0, cy - margen)
+            x2 = min(gray.shape[1], cx + margen); y2 = min(gray.shape[0], cy + margen)
+            crop = gray[y1:y2, x1:x2]
+        else:
+            h2, w2 = gray.shape
+            lado = int(min(h2, w2) * 0.45)
+            cy2, cx2 = h2 // 2, w2 // 2
+            crop = gray[cy2 - lado//2:cy2 + lado//2, cx2 - lado//2:cx2 + lado//2]
+
+        if crop.size == 0:
+            crop = gray
+
+        crop = cv2.resize(crop, (128, 128), interpolation=cv2.INTER_AREA)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        crop = clahe.apply(crop)
+
+        # Normalizar a [-1, 1] (igual que entrenamiento)
+        tensor = torch.from_numpy(crop).float().unsqueeze(0).unsqueeze(0) / 127.5 - 1.0
+        return tensor
+
+    def get_embedding(self, img_bytes):
+        """Retorna embedding numpy (128,) L2-normalizado."""
+        if self.modelo is None:
+            raise RuntimeError("Modelo CNN no disponible")
+        tensor = self._preprocess_cnn(img_bytes)
+        with torch.no_grad():
+            emb = self.modelo(tensor)
+        return emb.squeeze(0).numpy()
+
+    def compare_embeddings(self, emb1, emb2):
+        """Similitud coseno entre dos embeddings (ya L2-normalizados)."""
+        sim = float(np.dot(emb1, emb2))
+        match = sim >= self.MATCH_THRESHOLD
+        return {
+            'similitud': round(sim, 4),
+            'match': match,
+            'resultado': 'MATCH' if match else ('INCONCLUSO' if sim >= 0.50 else 'NO_MATCH'),
+            'umbral': self.MATCH_THRESHOLD,
+            'confianza': round(max(0.0, (sim - 0.3) / 0.7) * 100, 1),
+        }
+
+    def find_duplicate(self, new_emb, exclude_animal_id=None):
+        for aid, reg in iris_db.items():
+            if aid == exclude_animal_id:
+                continue
+            emb_stored = np.frombuffer(base64.b64decode(reg['embedding_b64']), dtype=np.float32)
+            sim = float(np.dot(emb_stored, new_emb))
+            if sim >= self.DUPLICATE_THRESHOLD:
+                return aid, sim
+        return None, None
+
+    # ── Validación: ¿la imagen parece un ojo? ──
     def validate_iris_image(self, img_bytes):
         nparr = np.frombuffer(img_bytes, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -50,124 +195,33 @@ class IrisAIEngine:
             return False, 0.0, {'error': 'No se pudo decodificar'}
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         h, w = gray.shape
-        scores = {}
 
         blurred = cv2.GaussianBlur(gray, (9, 9), 2)
-        circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=30, param1=100, param2=25, minRadius=max(10, min(h,w)//10), maxRadius=min(h,w)//2)
-        scores['circular_symmetry'] = min(1.0, len(circles[0]) / 2.0) if circles is not None else 0.0
+        circles = cv2.HoughCircles(
+            blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=30,
+            param1=100, param2=25,
+            minRadius=max(10, min(h, w) // 10), maxRadius=min(h, w) // 2,
+        )
+        circ_score = min(1.0, len(circles[0]) / 2.0) if circles is not None else 0.0
 
-        center_region = gray[h//3:2*h//3, w//3:2*w//3]
-        outer = np.concatenate([gray[0:h//4,:].flatten(), gray[3*h//4:,:].flatten()])
-        cm, om = float(np.mean(center_region)), float(np.mean(outer))
-        scores['dark_center_ratio'] = min(1.0, (om - cm) / 80.0) if cm < om else 0.0
-
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        enhanced = clahe.apply(gray)
-        gabor_vars = [float(np.var(cv2.filter2D(enhanced.astype(np.float32)/255, cv2.CV_32F, k))) for k in self.gabor_filters[:8]]
-        scores['radial_texture'] = min(1.0, float(np.mean(gabor_vars))*50 + float(np.var(gabor_vars))*100)
+        center = gray[h//3:2*h//3, w//3:2*w//3]
+        outer = np.concatenate([gray[:h//4].flatten(), gray[3*h//4:].flatten()])
+        cm, om = float(np.mean(center)), float(np.mean(outer))
+        dark_score = min(1.0, (om - cm) / 80.0) if cm < om else 0.0
 
         edges = cv2.Canny(blurred, 50, 150)
         ed = float(np.sum(edges > 0)) / (h * w)
-        scores['edge_density'] = max(0.0, min(1.0, 1.0 - abs(ed - 0.12)/0.12)) if 0.03 <= ed <= 0.30 else 0.0
+        edge_score = max(0.0, min(1.0, 1.0 - abs(ed - 0.12) / 0.12)) if 0.03 <= ed <= 0.30 else 0.0
 
-        scores['contrast_range'] = min(1.0, float(np.std(gray)) / 60.0)
-        scores['aspect_ratio'] = 1.0 if min(h,w)/max(h,w) > 0.5 else min(h,w)/max(h,w)/0.5
-
-        total = sum(scores[f] * self._val_weights[f] for f in self._val_weights)
-        valid = bool(total >= 0.35)
+        contrast = min(1.0, float(np.std(gray)) / 60.0)
+        total = circ_score * 0.35 + dark_score * 0.30 + edge_score * 0.20 + contrast * 0.15
+        valid = bool(total >= 0.30)
         return valid, float(total), {
-            'scores': {k: round(v, 3) for k, v in scores.items()},
-            'total_score': round(float(total), 3),
-            'confidence': round(float(total * 100), 1),
+            'total_score': round(total, 3),
+            'confidence': round(total * 100, 1),
             'is_valid': valid,
-            'threshold': 0.35,
             'circles_found': int(len(circles[0])) if circles is not None else 0,
         }
-
-    def preprocess_image(self, img_bytes):
-        nparr = np.frombuffer(img_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img is None:
-            raise ValueError("No se pudo decodificar la imagen")
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        enhanced = clahe.apply(gray)
-        denoised = cv2.bilateralFilter(enhanced, 9, 75, 75)
-
-        circles = cv2.HoughCircles(denoised, cv2.HOUGH_GRADIENT, dp=1.2, minDist=50, param1=100, param2=30, minRadius=20, maxRadius=min(gray.shape)//3)
-        if circles is not None:
-            circles = np.round(circles[0]).astype(int)
-            cx, cy, r = circles[0]
-            ir = int(r * 2.5)
-            y1, y2 = max(0, cy-ir), min(gray.shape[0], cy+ir)
-            x1, x2 = max(0, cx-ir), min(gray.shape[1], cx+ir)
-            roi = denoised[y1:y2, x1:x2]
-        else:
-            h, w = denoised.shape
-            m = min(h, w) // 6
-            roi = denoised[m:h-m, m:w-m]
-
-        normalized = cv2.resize(roi, (512, 64), interpolation=cv2.INTER_LINEAR)
-        return normalized, {
-            'original_size': [int(x) for x in gray.shape],
-            'circles_detected': bool(circles is not None),
-        }
-
-    def extract_features(self, normalized):
-        features = []
-        f = normalized.astype(np.float32) / 255.0
-        for k in self.gabor_filters:
-            filtered = cv2.filter2D(f, cv2.CV_32F, k)
-            h, w = filtered.shape
-            gh, gw = 4, 8
-            rh, rw = h // gh, w // gw
-            for i in range(gh):
-                for j in range(gw):
-                    region = filtered[i*rh:(i+1)*rh, j*rw:(j+1)*rw]
-                    features.append(1 if np.mean(region) > 0 else 0)
-        features = features[:self.IRIS_CODE_BITS]
-        while len(features) < self.IRIS_CODE_BITS:
-            features.append(0)
-        return np.array(features, dtype=np.uint8)
-
-    def generate_iris_code(self, img_bytes):
-        normalized, info = self.preprocess_image(img_bytes)
-        code = self.extract_features(normalized)
-        code_bytes = code.tobytes()
-        return {
-            'iris_hash': hashlib.sha256(code_bytes).hexdigest(),
-            'iris_code_b64': base64.b64encode(code_bytes).decode('utf-8'),
-            'code_length': int(len(code)),
-            'bits_activos': int(np.sum(code)),
-            'preprocess_info': info,
-        }
-
-    def compare_codes(self, code1_b64, code2_b64):
-        c1 = np.frombuffer(base64.b64decode(code1_b64), dtype=np.uint8)
-        c2 = np.frombuffer(base64.b64decode(code2_b64), dtype=np.uint8)
-        ml = min(len(c1), len(c2))
-        hamming = float(np.sum(c1[:ml] != c2[:ml]) / ml)
-        match = bool(hamming < self.MATCH_THRESHOLD)
-        return {
-            'distancia_hamming': hamming,
-            'match': match,
-            'resultado': 'MATCH' if match else ('INCONCLUSO' if hamming < 0.40 else 'NO_MATCH'),
-            'umbral': float(self.MATCH_THRESHOLD),
-            'confianza': float(max(0, (1 - hamming / 0.5)) * 100),
-        }
-
-    def find_duplicate(self, new_code_b64, exclude_animal_id=None):
-        """Busca si este iris ya está registrado en otro animal."""
-        for aid, reg in iris_db.items():
-            if aid == exclude_animal_id:
-                continue
-            c1 = np.frombuffer(base64.b64decode(reg['iris_code_b64']), dtype=np.uint8)
-            c2 = np.frombuffer(base64.b64decode(new_code_b64), dtype=np.uint8)
-            ml = min(len(c1), len(c2))
-            hamming = float(np.sum(c1[:ml] != c2[:ml]) / ml)
-            if hamming < self.DUPLICATE_THRESHOLD:
-                return aid, hamming
-        return None, None
 
     def generate_demo_image(self, seed=None):
         if seed is not None:
@@ -175,39 +229,63 @@ class IrisAIEngine:
         size = 256
         img = np.zeros((size, size), dtype=np.uint8)
         img[:] = 30
-        center = (size//2, size//2)
+        center = (size // 2, size // 2)
         cv2.circle(img, center, 100, 120, -1)
-        for angle in np.linspace(0, 2*np.pi, 60):
-            r1, r2 = 40 + np.random.randint(0, 20), 80 + np.random.randint(0, 25)
-            x1, y1 = int(center[0]+r1*np.cos(angle)), int(center[1]+r1*np.sin(angle))
-            x2, y2 = int(center[0]+r2*np.cos(angle)), int(center[1]+r2*np.sin(angle))
-            cv2.line(img, (x1,y1), (x2,y2), int(np.random.randint(60,180)), 1)
+        for angle in np.linspace(0, 2 * np.pi, 60):
+            r1 = 40 + np.random.randint(0, 20)
+            r2 = 80 + np.random.randint(0, 25)
+            x1 = int(center[0] + r1 * np.cos(angle))
+            y1 = int(center[1] + r1 * np.sin(angle))
+            x2 = int(center[0] + r2 * np.cos(angle))
+            y2 = int(center[1] + r2 * np.sin(angle))
+            cv2.line(img, (x1, y1), (x2, y2), int(np.random.randint(60, 180)), 1)
         cv2.circle(img, center, 35, 10, -1)
-        cv2.circle(img, (center[0]-10, center[1]-15), 5, 220, -1)
+        cv2.circle(img, (center[0] - 10, center[1] - 15), 5, 220, -1)
         noise = np.random.normal(0, 8, img.shape).astype(np.int16)
         return np.clip(img.astype(np.int16) + noise, 0, 255).astype(np.uint8)
 
 
 # ==================== INIT ====================
 engine = IrisAIEngine()
-iris_db = {}  # { animal_id: { iris_hash, iris_code_b64, registrado_at, modo } }
+
+DB_PATH = Path(__file__).parent / "iris_db.json"
+
+def _load_db():
+    if DB_PATH.exists():
+        import json
+        try:
+            with open(DB_PATH, 'r') as f:
+                data = json.load(f)
+            print(f"[DB] Cargados {len(data)} registros de iris desde {DB_PATH}")
+            return data
+        except Exception as e:
+            print(f"[DB] Error leyendo iris_db.json: {e}")
+    return {}
+
+def _save_db():
+    import json
+    with open(DB_PATH, 'w') as f:
+        json.dump(iris_db, f)
+
+iris_db = _load_db()  # { animal_id: { embedding_b64, iris_hash, registrado_at, modo } }
 
 
 def get_img_bytes(req):
-    """Extrae imagen y metadata del request."""
     animal_id = None; img_bytes = None; modo = 'simulado'
     if req.content_type and 'multipart' in req.content_type:
         animal_id = req.form.get('animal_id')
         modo = req.form.get('modo', 'simulado')
         f = req.files.get('imagen')
-        if f: img_bytes = f.read()
+        if f:
+            img_bytes = f.read()
     else:
         data = req.get_json()
         animal_id = data.get('animal_id')
         modo = data.get('modo', 'simulado')
         b64 = data.get('imagen_base64')
         if b64:
-            if ',' in b64: b64 = b64.split(',')[1]
+            if ',' in b64:
+                b64 = b64.split(',')[1]
             img_bytes = base64.b64decode(b64)
     return animal_id, img_bytes, modo
 
@@ -217,8 +295,9 @@ def get_img_bytes(req):
 @app.route('/api/iris/health', methods=['GET'])
 def health():
     return jsonify({
-        'status': 'ok', 'servicio': 'SIGGAN Iris Biometrics AI v2',
-        'filtros_gabor': len(engine.gabor_filters),
+        'status': 'ok',
+        'servicio': 'SIGGAN Iris Biometrics v3 (CNN+ArcFace)',
+        'modelo_cargado': engine.modelo is not None,
         'iris_registrados': len(iris_db),
         'animales_registrados': list(iris_db.keys()),
         'timestamp': datetime.now().isoformat(),
@@ -227,18 +306,16 @@ def health():
 
 @app.route('/api/iris/registrar', methods=['POST'])
 def registrar_iris():
-    """Registra iris. Verifica unicidad: si ya existe en otro animal, rechaza."""
     try:
         animal_id, img_bytes, modo = get_img_bytes(request)
         if not animal_id:
             return jsonify({'error': 'Se requiere animal_id'}), 400
 
-        # Generar o validar imagen
         validacion_ia = None
         if modo == 'simulado' or not img_bytes:
-            seed = int(hashlib.md5(animal_id.encode()).hexdigest()[:8], 16) % (2**31)
-            demo_img = engine.generate_demo_image(seed)
-            _, buf = cv2.imencode('.png', demo_img)
+            seed = int(hashlib.md5(animal_id.encode()).hexdigest()[:8], 16) % (2 ** 31)
+            demo = engine.generate_demo_image(seed)
+            _, buf = cv2.imencode('.png', demo)
             img_bytes = buf.tobytes()
             validacion_ia = {'is_valid': True, 'confidence': 100.0, 'modo': 'simulado_skip'}
         else:
@@ -250,15 +327,16 @@ def registrar_iris():
                     'sugerencias': [
                         'Asegúrate de que la foto muestre claramente el ojo del animal',
                         'La imagen debe tener buena iluminación y enfoque',
-                        f'Score obtenido: {validacion_ia["confidence"]:.1f}% (mínimo: 35%)',
+                        f'Score obtenido: {validacion_ia["confidence"]:.1f}% (mínimo: 30%)',
                     ],
                 }), 400
 
-        # Procesar iris
-        resultado = engine.generate_iris_code(img_bytes)
+        emb = engine.get_embedding(img_bytes)
+        iris_hash = hashlib.sha256(emb.tobytes()).hexdigest()
+        emb_b64 = base64.b64encode(emb.astype(np.float32).tobytes()).decode('utf-8')
 
-        # VERIFICACIÓN DE UNICIDAD: ¿este iris ya existe en otro animal?
-        dup_id, dup_dist = engine.find_duplicate(resultado['iris_code_b64'], exclude_animal_id=animal_id)
+        # Verificar unicidad
+        dup_id, dup_sim = engine.find_duplicate(emb, exclude_animal_id=animal_id)
         if dup_id is not None:
             dup_reg = iris_db[dup_id]
             return jsonify({
@@ -266,32 +344,30 @@ def registrar_iris():
                 'duplicado': True,
                 'animal_existente': dup_id,
                 'iris_hash_existente': dup_reg['iris_hash'],
-                'distancia': dup_dist,
+                'similitud': dup_sim,
                 'registrado_en': dup_reg.get('registrado_at', ''),
                 'mensaje': (
                     f'Este iris ya pertenece al animal {dup_id}. '
-                    'Si crees que es un error, contacta a una autoridad del sistema. '
                     'No se permite registrar el mismo iris en dos animales diferentes.'
                 ),
                 'accion_requerida': 'CONTACTAR_AUTORIDAD',
-            }), 409  # Conflict
+            }), 409
 
-        # Registrar
         iris_db[animal_id] = {
-            'iris_hash': resultado['iris_hash'],
-            'iris_code_b64': resultado['iris_code_b64'],
+            'embedding_b64': emb_b64,
+            'iris_hash': iris_hash,
             'registrado_at': datetime.now().isoformat(),
             'modo': modo,
         }
+        _save_db()
 
         return jsonify({
-            'success': True, 'animal_id': animal_id, 'modo': modo,
-            'iris_hash': resultado['iris_hash'],
-            'code_length': resultado['code_length'],
-            'bits_activos': resultado['bits_activos'],
-            'preprocess_info': resultado['preprocess_info'],
+            'success': True,
+            'animal_id': animal_id,
+            'modo': modo,
+            'iris_hash': iris_hash,
             'validacion_ia': validacion_ia,
-            'mensaje': f'Iris registrado ({modo}). Hash: {resultado["iris_hash"][:16]}...',
+            'mensaje': f'Iris registrado ({modo}). Hash: {iris_hash[:16]}...',
         })
     except Exception as e:
         traceback.print_exc()
@@ -300,10 +376,6 @@ def registrar_iris():
 
 @app.route('/api/iris/verificar', methods=['POST'])
 def verificar_iris():
-    """
-    Verifica iris contra registro.
-    Si NO coincide con el animal solicitado pero SÍ con otro → alerta de fraude.
-    """
     try:
         animal_id, img_bytes, modo = get_img_bytes(request)
         if not animal_id:
@@ -311,12 +383,11 @@ def verificar_iris():
         if animal_id not in iris_db:
             return jsonify({'error': 'Este animal no tiene iris registrado', 'registrado': False}), 404
 
-        # Generar o validar imagen
         validacion_ia = None
         if modo == 'simulado' or not img_bytes:
-            seed = int(hashlib.md5(animal_id.encode()).hexdigest()[:8], 16) % (2**31)
-            demo_img = engine.generate_demo_image(seed)
-            _, buf = cv2.imencode('.png', demo_img)
+            seed = int(hashlib.md5(animal_id.encode()).hexdigest()[:8], 16) % (2 ** 31)
+            demo = engine.generate_demo_image(seed)
+            _, buf = cv2.imencode('.png', demo)
             img_bytes = buf.tobytes()
             validacion_ia = {'is_valid': True, 'confidence': 100.0, 'modo': 'simulado_skip'}
         else:
@@ -328,42 +399,39 @@ def verificar_iris():
                     'sugerencias': ['Sube una foto clara del ojo del animal'],
                 }), 400
 
-        # Procesar nueva imagen
-        nuevo = engine.generate_iris_code(img_bytes)
-        registrado = iris_db[animal_id]
-        comparacion = engine.compare_codes(registrado['iris_code_b64'], nuevo['iris_code_b64'])
+        emb_nuevo = engine.get_embedding(img_bytes)
+        emb_registrado = np.frombuffer(
+            base64.b64decode(iris_db[animal_id]['embedding_b64']), dtype=np.float32
+        )
+        comparacion = engine.compare_embeddings(emb_registrado, emb_nuevo)
 
         resp = {
-            'success': True, 'animal_id': animal_id, 'modo': modo,
+            'success': True,
+            'animal_id': animal_id,
+            'modo': modo,
             'verificacion': comparacion,
             'validacion_ia': validacion_ia,
-            'iris_hash_registrado': registrado['iris_hash'],
-            'iris_hash_nuevo': nuevo['iris_hash'],
+            'iris_hash_registrado': iris_db[animal_id]['iris_hash'],
         }
 
-        # Si NO coincide con este animal, buscar si coincide con OTRO
         if not comparacion['match']:
-            match_id, match_dist = engine.find_duplicate(nuevo['iris_code_b64'])
+            match_id, match_sim = engine.find_duplicate(emb_nuevo)
             if match_id and match_id != animal_id:
                 resp['alerta_fraude'] = {
                     'tipo': 'IRIS_NO_COINCIDE',
                     'mensaje': (
-                        f'⚠️ ALERTA: La iris escaneada NO coincide con el animal {animal_id}, '
+                        f'ALERTA: La iris escaneada NO coincide con el animal {animal_id}, '
                         f'pero SÍ coincide con el animal {match_id}. '
-                        'Esto puede indicar suplantación de identidad. '
-                        'Contacte inmediatamente a una autoridad.'
+                        'Posible suplantación de identidad.'
                     ),
                     'animal_real': match_id,
-                    'distancia_con_real': match_dist,
+                    'similitud_con_real': match_sim,
                     'accion_requerida': 'CONTACTAR_AUTORIDAD',
                 }
             else:
                 resp['alerta_fraude'] = {
                     'tipo': 'IRIS_DESCONOCIDA',
-                    'mensaje': (
-                        'La iris escaneada no coincide con este animal ni con ningún otro registrado. '
-                        'Puede ser un animal no registrado o una imagen de baja calidad.'
-                    ),
+                    'mensaje': 'La iris no coincide con este animal ni con ningún otro registrado.',
                     'accion_requerida': 'VERIFICAR_MANUALMENTE',
                 }
 
@@ -375,10 +443,8 @@ def verificar_iris():
 
 @app.route('/api/iris/buscar', methods=['POST'])
 def buscar_iris():
-    """Busca animal por iris (1:N). Sube una foto → te dice a quién pertenece."""
     try:
         _, img_bytes, modo = get_img_bytes(request)
-
         if modo == 'simulado' or not img_bytes:
             return jsonify({'error': 'Se requiere una imagen real para buscar'}), 400
 
@@ -386,15 +452,18 @@ def buscar_iris():
         if not is_valid:
             return jsonify({'error': 'La imagen no parece un iris válido', 'validacion_ia': val}), 400
 
-        nuevo = engine.generate_iris_code(img_bytes)
+        emb_nuevo = engine.get_embedding(img_bytes)
         resultados = []
         for aid, reg in iris_db.items():
-            comp = engine.compare_codes(reg['iris_code_b64'], nuevo['iris_code_b64'])
+            emb_stored = np.frombuffer(base64.b64decode(reg['embedding_b64']), dtype=np.float32)
+            comp = engine.compare_embeddings(emb_stored, emb_nuevo)
             resultados.append({
-                'animal_id': aid, 'distancia': comp['distancia_hamming'],
-                'match': comp['match'], 'confianza': comp['confianza'],
+                'animal_id': aid,
+                'similitud': comp['similitud'],
+                'match': comp['match'],
+                'confianza': comp['confianza'],
             })
-        resultados.sort(key=lambda x: x['distancia'])
+        resultados.sort(key=lambda x: x['similitud'], reverse=True)
 
         return jsonify({
             'success': True,
@@ -410,15 +479,16 @@ def buscar_iris():
 
 @app.route('/api/iris/validar-imagen', methods=['POST'])
 def validar_imagen():
-    """Pre-valida si una imagen es un iris."""
     try:
         _, img_bytes, _ = get_img_bytes(request)
         if not img_bytes:
             return jsonify({'error': 'Se requiere imagen'}), 400
         is_valid, score, det = engine.validate_iris_image(img_bytes)
         return jsonify({
-            'es_iris_valido': is_valid, 'score': round(score, 3),
-            'confianza': round(score * 100, 1), 'detalles': det,
+            'es_iris_valido': is_valid,
+            'score': round(score, 3),
+            'confianza': round(score * 100, 1),
+            'detalles': det,
         })
     except Exception as e:
         traceback.print_exc()
@@ -427,51 +497,50 @@ def validar_imagen():
 
 @app.route('/api/iris/reset', methods=['DELETE'])
 def reset_all():
-    """Elimina TODOS los registros de iris."""
     count = len(iris_db)
     iris_db.clear()
+    _save_db()
     return jsonify({'success': True, 'eliminados': count, 'mensaje': f'{count} registros de iris eliminados'})
 
 
 @app.route('/api/iris/reset/<animal_id>', methods=['DELETE'])
 def reset_animal(animal_id):
-    """Elimina el registro de iris de un animal específico."""
     if animal_id in iris_db:
         del iris_db[animal_id]
+        _save_db()
         return jsonify({'success': True, 'animal_id': animal_id, 'mensaje': f'Iris de {animal_id} eliminado'})
     return jsonify({'error': 'Animal no tiene iris registrado'}), 404
 
 
 @app.route('/api/iris/registros', methods=['GET'])
 def listar_registros():
-    """Lista todos los iris registrados."""
-    registros = []
-    for aid, reg in iris_db.items():
-        registros.append({
+    registros = [
+        {
             'animal_id': aid,
             'iris_hash': reg['iris_hash'],
             'registrado_at': reg.get('registrado_at', ''),
             'modo': reg.get('modo', 'desconocido'),
-        })
+        }
+        for aid, reg in iris_db.items()
+    ]
     return jsonify({'total': len(registros), 'registros': registros})
 
 
 @app.route('/api/iris/demo-image/<animal_id>', methods=['GET'])
 def demo_image(animal_id):
-    seed = int(hashlib.md5(animal_id.encode()).hexdigest()[:8], 16) % (2**31)
+    seed = int(hashlib.md5(animal_id.encode()).hexdigest()[:8], 16) % (2 ** 31)
     img = engine.generate_demo_image(seed)
     img_color = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    img_color[:,:,0] = img_color[:,:,0] // 2
-    img_color[:,:,2] = img_color[:,:,2] // 2
+    img_color[:, :, 0] = img_color[:, :, 0] // 2
+    img_color[:, :, 2] = img_color[:, :, 2] // 2
     _, buf = cv2.imencode('.png', img_color)
     return send_file(io.BytesIO(buf.tobytes()), mimetype='image/png')
 
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("  SIGGAN - Microservicio de Biometría de Iris v2 (IA)")
-    print(f"  Filtros de Gabor: {len(engine.gabor_filters)}")
-    print(f"  Código de iris: {engine.IRIS_CODE_BITS} bits")
+    print("  SIGGAN - Microservicio de Biometría de Iris v3")
+    print(f"  Modelo CNN: {'CARGADO' if engine.modelo is not None else 'NO ENCONTRADO'}")
     print(f"  Umbral match: {engine.MATCH_THRESHOLD}")
     print(f"  Umbral duplicado: {engine.DUPLICATE_THRESHOLD}")
     print("=" * 60)

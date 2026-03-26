@@ -20,6 +20,7 @@ import BiometriaPage from './pages/BiometriaPage';
 import TrazabilidadPage from './pages/TrazabilidadPage';
 import BusquedaPage from './pages/BusquedaPage';
 import AdminUsuariosPage from './pages/AdminUsuariosPage';
+import CuarentenaPage from './pages/CuarentenaPage';
 
 const App: React.FC = () => (
   <AuthProvider>
@@ -44,6 +45,7 @@ const App: React.FC = () => (
           <Route path="notificaciones" element={<NotificacionesPage />} />
           <Route path="biometria" element={<BiometriaPage />} />
           <Route path="busqueda" element={<BusquedaPage />} />
+          <Route path="cuarentena" element={<CuarentenaPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

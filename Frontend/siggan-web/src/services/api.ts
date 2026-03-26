@@ -58,6 +58,16 @@ export const createEventoLote = (data: any) => api.post('/eventos/lote', data);
 export const getHistorialAretes = (animalId: string) => api.get(`/aretes/animal/${animalId}`);
 export const transferirAnimal = (data: any) => api.post('/aretes/transferir', data);
 
+// Pool de aretes (admin)
+export const getPoolAretes = (params?: any) => api.get('/aretes/pool', { params });
+export const addPoolAretes = (data: any) => api.post('/aretes/pool', data);
+export const deletePoolArete = (id: string) => api.delete(`/aretes/pool/${id}`);
+
+// Solicitudes exportación (admin)
+export const getExportacionPendientes = () => api.get('/aretes/exportacion/pendientes');
+export const aprobarExportacion = (formularioId: string, data?: any) => api.post(`/aretes/exportacion/${formularioId}/aprobar`, data || {});
+export const rechazarExportacion = (formularioId: string, motivo: string) => api.post(`/aretes/exportacion/${formularioId}/rechazar`, { motivo });
+
 // Búsqueda
 export const busquedaGlobal = (q: string) => api.get('/busqueda', { params: { q } });
 export const busquedaHistorial = (arete: string) => api.get(`/busqueda/historial/${arete}`);

@@ -38,7 +38,7 @@ router.get('/alertas', async (req: AuthRequest, res: Response) => {
     if (severidad) where.severidad = severidad as string;
 
     const alertas = await prisma.alertaIoT.findMany({
-      where, take: parseInt(limit as string), orderBy: { createdAt: 'desc' },
+      where, take: parseInt(limit as string), orderBy: { timestamp: 'desc' },
     });
     res.json(alertas);
   } catch (error) { console.error(error); res.status(500).json({ error: 'Error' }); }
@@ -55,7 +55,7 @@ router.put('/alertas/:id/leer', async (req: AuthRequest, res: Response) => {
 // GET /api/iot/nodos - Nodos IoT
 router.get('/nodos', async (req: AuthRequest, res: Response) => {
   try {
-    const nodos = await prisma.nodoIoT.findMany({ orderBy: { nodoId: 'asc' } });
+    const nodos = await prisma.nodoIoT.findMany({ orderBy: { nombre: 'asc' } });
     res.json(nodos);
   } catch (error) { console.error(error); res.status(500).json({ error: 'Error' }); }
 });

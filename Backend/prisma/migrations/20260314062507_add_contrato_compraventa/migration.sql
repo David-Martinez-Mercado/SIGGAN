@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "TipoFormulario" ADD VALUE 'CONTRATO_COMPRAVENTA';

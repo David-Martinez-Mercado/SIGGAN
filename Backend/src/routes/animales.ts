@@ -8,15 +8,23 @@ const router = Router();
 router.use(authMiddleware);
 
 const createAnimalSchema = z.object({
-  nombre: z.string().optional(),
-  raza: z.string().min(2, 'Raza requerida'),
-  sexo: z.enum(['MACHO', 'HEMBRA']),
-  fechaNacimiento: z.string().transform(s => new Date(s)),
-  color: z.string().optional(),
-  peso: z.number().positive().optional(),
-  proposito: z.string().optional(),
-  uppId: z.string().uuid('UPP requerida'),
-  madreId: z.string().uuid().optional(),
+  nombre:             z.string().optional(),
+  raza:               z.string().min(2, 'Raza requerida'),
+  sexo:               z.enum(['MACHO', 'HEMBRA']),
+  fechaNacimiento:    z.string().transform(s => new Date(s)),
+  color:              z.string().optional(),
+  peso:               z.number().positive().optional(),
+  pesoNacimiento:     z.number().min(0).max(200).optional(),
+  horaNacimiento:     z.string().optional(),
+  condicionCorporal:  z.number().min(1).max(5).optional(),
+  areteNacionalPadre: z.string().optional(),
+  razaPadre:          z.string().optional(),
+  tipoParto:          z.string().optional(),
+  esGemelar:          z.boolean().optional(),
+  numCriaCamada:      z.number().int().positive().optional(),
+  proposito:          z.string().optional(),
+  uppId:              z.string().uuid('UPP requerida'),
+  madreId:            z.string().uuid().optional(),
 });
 
 // Helper
@@ -150,44 +158,62 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       propietarioId = pid;
     }
 
-    // Generar folios automáticos
-    const areteNacional = await generarAreteNacional();
+    // Arete nacional: primero del pool, si no hay → generar automáticamente
+    let areteNacional: string;
+    let areteDelPool: any = null;
+    areteDelPool = await prisma.areteDisponible.findFirst({
+      where: { tipo: 'NACIONAL', asignado: false }, orderBy: { numero: 'asc' },
+    });
+    areteNacional = areteDelPool ? areteDelPool.numero : await generarAreteNacional();
+
     const rfidTag = await generarRFIDTag();
 
-    // Si el propósito es exportación, generar arete de exportación
-    let areteExportacion: string | undefined;
-    if (data.proposito === 'Exportación') {
-      areteExportacion = await generarAreteExportacion();
-    }
+    // Exportación: NO asignar arete inmediatamente — crear solicitud pendiente
+    const esExportacion = data.proposito === 'Exportación';
 
     const animal = await prisma.animal.create({
-      data: {
-        ...data,
-        areteNacional,
-        rfidTag,
-        areteExportacion,
-        propietarioId,
-      },
+      data: { ...data, areteNacional, rfidTag, propietarioId },
       include: {
         propietario: { select: { id: true, nombre: true, apellidos: true } },
         upp: { select: { id: true, claveUPP: true, nombre: true } },
       },
     });
 
+    // Marcar arete nacional del pool como asignado
+    if (areteDelPool) {
+      await prisma.areteDisponible.update({ where: { id: areteDelPool.id }, data: { asignado: true, animalId: animal.id } });
+    }
+
     // Historial de aretes
-    await prisma.historialArete.create({
-      data: { animalId: animal.id, tipoArete: 'NACIONAL', numeroArete: areteNacional, accion: 'ASIGNADO', motivo: 'Registro inicial' },
+    await prisma.historialArete.createMany({
+      data: [
+        { animalId: animal.id, tipoArete: 'NACIONAL', numeroArete: areteNacional, accion: 'ASIGNADO', motivo: areteDelPool ? 'Asignado desde pool' : 'Generado automáticamente' },
+        { animalId: animal.id, tipoArete: 'RFID', numeroArete: rfidTag, accion: 'ASIGNADO', motivo: 'Asignación automática' },
+      ],
     });
-    await prisma.historialArete.create({
-      data: { animalId: animal.id, tipoArete: 'RFID', numeroArete: rfidTag, accion: 'ASIGNADO', motivo: 'Asignación automática' },
-    });
-    if (areteExportacion) {
-      await prisma.historialArete.create({
-        data: { animalId: animal.id, tipoArete: 'EXPORTACION', numeroArete: areteExportacion, accion: 'ASIGNADO', motivo: 'Propósito de exportación' },
+
+    // Si es para exportación → crear solicitud pendiente de aprobación
+    if (esExportacion) {
+      const folio = `SOL-EXP-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 90000) + 10000)}`;
+      await prisma.formulario.create({
+        data: {
+          tipo: 'SOLICITUD_ARETES_EXPORTACION' as any, folio, estatus: 'ENVIADO',
+          usuarioId: req.userId!,
+          datos: {
+            animalId: animal.id, areteAnimal: animal.areteNacional,
+            razaAnimal: animal.raza, sexoAnimal: animal.sexo,
+            uppId: animal.uppId, uppNombre: animal.upp.nombre, uppClave: animal.upp.claveUPP,
+            propietarioNombre: `${animal.propietario.nombre} ${animal.propietario.apellidos}`,
+            propietarioId: animal.propietarioId, propositoAnterior: null,
+          },
+        },
+      });
+      await prisma.alertaIoT.create({
+        data: { tipo: 'EXPORTACION_PENDIENTE', mensaje: `Nueva solicitud de exportación para el animal ${animal.areteNacional}. Pendiente de asignar arete y aprobar.`, severidad: 'MEDIA', animalId: animal.id, leida: false },
       });
     }
 
-    res.status(201).json(animal);
+    res.status(201).json({ ...animal, solicitudExportacionPendiente: esExportacion });
   } catch (error: any) {
     if (error.name === 'ZodError') { res.status(400).json({ error: 'Datos inválidos', detalles: error.errors }); return; }
     if (error.code === 'P2002') { res.status(409).json({ error: 'Error de duplicidad en registro' }); return; }
@@ -214,38 +240,44 @@ router.put('/:id/proposito', async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const updateData: any = { proposito };
-
-    // Si cambia a exportación y no tiene arete de exportación, asignar uno
+    // Si cambia a exportación y no tiene arete → crear solicitud pendiente (NO asignar aún)
     if (proposito === 'Exportación' && !animal.areteExportacion) {
-      const areteExp = await generarAreteExportacion();
-      updateData.areteExportacion = areteExp;
-
-      // Registrar en historial
-      await prisma.historialArete.create({
-        data: {
-          animalId: animal.id, tipoArete: 'EXPORTACION',
-          numeroArete: areteExp, accion: 'ASIGNADO',
-          motivo: 'Cambio de propósito a exportación',
-        },
+      // Verificar si ya hay una solicitud pendiente para este animal
+      const solPendiente = await prisma.formulario.findFirst({
+        where: { tipo: 'SOLICITUD_ARETES_EXPORTACION' as any, estatus: { in: ['ENVIADO', 'BORRADOR'] }, datos: { path: ['animalId'], equals: animal.id } },
       });
+      if (!solPendiente) {
+        const folio = `SOL-EXP-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 90000) + 10000)}`;
+        await prisma.formulario.create({
+          data: {
+            tipo: 'SOLICITUD_ARETES_EXPORTACION' as any, folio, estatus: 'ENVIADO',
+            usuarioId: req.userId!,
+            datos: {
+              animalId: animal.id, areteAnimal: animal.areteNacional,
+              razaAnimal: animal.raza, sexoAnimal: animal.sexo,
+              uppId: animal.uppId, propietarioId: animal.propietarioId,
+              propositoAnterior: animal.proposito,
+            },
+          },
+        });
+        await prisma.alertaIoT.create({
+          data: { tipo: 'EXPORTACION_PENDIENTE', mensaje: `Solicitud de exportación para ${animal.areteNacional}. Pendiente de asignar arete y aprobación del admin.`, severidad: 'MEDIA', animalId: animal.id, leida: false },
+        });
+      }
+
+      const actualizado = await prisma.animal.update({
+        where: { id: req.params.id }, data: { proposito },
+        include: { propietario: { select: { id: true, nombre: true, apellidos: true } }, upp: { select: { id: true, claveUPP: true, nombre: true } } },
+      });
+      res.json({ message: 'Solicitud de exportación creada. El admin asignará el arete cuando la apruebe.', animal: actualizado, solicitudPendiente: true });
+      return;
     }
 
     const actualizado = await prisma.animal.update({
-      where: { id: req.params.id },
-      data: updateData,
-      include: {
-        propietario: { select: { id: true, nombre: true, apellidos: true } },
-        upp: { select: { id: true, claveUPP: true, nombre: true } },
-      },
+      where: { id: req.params.id }, data: { proposito },
+      include: { propietario: { select: { id: true, nombre: true, apellidos: true } }, upp: { select: { id: true, claveUPP: true, nombre: true } } },
     });
-
-    res.json({
-      message: proposito === 'Exportación' && !animal.areteExportacion
-        ? `Propósito actualizado. Arete de exportación asignado: ${updateData.areteExportacion}`
-        : 'Propósito actualizado',
-      animal: actualizado,
-    });
+    res.json({ message: 'Propósito actualizado', animal: actualizado });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al cambiar propósito' });
