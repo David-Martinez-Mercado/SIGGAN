@@ -306,6 +306,10 @@ model LecturaIoT {
   temperatura     Float?
   rssi            Int?
   bateria         Float?
+  ritmoCardiaco   Int?
+  estres          Int?
+  saturacionO2    Float?
+  actividad       String?
   timestamp       DateTime @default(now())
 
   animalId        String
@@ -333,6 +337,7 @@ model AlertaIoT {
 // ==================== NODOS IoT ====================
 model NodoIoT {
   id              String   @id @default(uuid())
+  nodoId          String?  @unique
   nombre          String
   tipo            String   @default("ESP32_LORA")
   ubicacion       String?

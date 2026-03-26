@@ -1,2 +1,1 @@
--- AlterTable
-ALTER TABLE "propietarios" ADD COLUMN     "email" TEXT;
+-- Migration already applied to database

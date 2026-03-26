@@ -1,0 +1,19 @@
+{
+  "name": "siggan-iot-simulator",
+  "version": "1.0.0",
+  "description": "Simulador de sensores IoT para SIGGAN - Union Ganadera Durango",
+  "main": "simulador_iot.js",
+  "type": "module",
+  "scripts": {
+    "start": "node simulador_iot.js",
+    "dev": "node --watch simulador_iot.js",
+    "test": "node test/test_apis.js",
+    "test:apis": "node test/test_apis.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "pg": "^8.11.0",
+    "winston": "^3.11.0"
+  }
+}

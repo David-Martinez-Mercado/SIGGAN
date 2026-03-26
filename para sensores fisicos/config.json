@@ -1,0 +1,102 @@
+{
+  "backend": {
+    "url": "http://localhost:3001",
+    "endpoints": {
+      "simulador": "/api/iot/simular",
+      "lecturas": "/api/iot/lecturas",
+      "alertas": "/api/iot/alertas",
+      "nodos": "/api/iot/nodos",
+      "dashboard": "/api/iot/dashboard"
+    },
+    "timeout": 5000,
+    "retries": 3
+  },
+  "database": {
+    "type": "postgresql",
+    "host": "localhost",
+    "port": 5432,
+    "user": "postgres",
+    "password": "123456789",
+    "database": "siggan_db",
+    "ssl": false
+  },
+  "simulador": {
+    "activo": true,
+    "intervaloSimulacion_ms": 30000,
+    "modoOperacion": "api"
+  },
+  "sensores": {
+    "nodos": [
+      {
+        "nodoId": "ESP32-001",
+        "nombre": "Corral Principal",
+        "tipo": "ESP32",
+        "ubicacion": "Lechería Centro",
+        "latitud": 24.0277,
+        "longitud": -104.6532,
+        "activo": true
+      },
+      {
+        "nodoId": "ESP32-002",
+        "nombre": "Potrero Norte",
+        "tipo": "ESP32",
+        "ubicacion": "Potrero N",
+        "latitud": 24.035,
+        "longitud": -104.645,
+        "activo": true
+      },
+      {
+        "nodoId": "LORA-001",
+        "nombre": "Gateway LoRa Principal",
+        "tipo": "LORA",
+        "ubicacion": "Torre Central",
+        "latitud": 24.0277,
+        "longitud": -104.6532,
+        "activo": true
+      }
+    ],
+    "temperatura": {
+      "min": 36.5,
+      "max": 40.0,
+      "media": 38.5,
+      "desviacion": 0.8,
+      "umbral_alerta": 40.5
+    },
+    "bateria": {
+      "min": 10,
+      "max": 100,
+      "umbral_baja": 20,
+      "degradacion_diaria": 0.5
+    },
+    "gps": {
+      "epicentro_lat": 24.0277,
+      "epicentro_lon": -104.6532,
+      "radio_metros": 5000
+    },
+    "rssi": {
+      "min": -120,
+      "max": -30,
+      "media": -70,
+      "variacion": 10
+    }
+  },
+  "alertas_probabilidades": {
+    "fiebre_alto": 0.05,
+    "fuera_geocerca": 0.03,
+    "bateria_baja": 0.02,
+    "perdida_conexion": 0.01
+  },
+  "logging": {
+    "nivel": "info",
+    "archivo": "logs/simulador_iot.log",
+    "console": true,
+    "formato": "json"
+  },
+  "autenticacion": {
+    "tipo": "jwt",
+    "token": "",
+    "login_endpoint": "/api/auth/login",
+    "email": "admin@siggan.mx",
+    "password": "admin123"
+  }
+}

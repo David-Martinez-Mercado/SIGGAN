@@ -1,0 +1,284 @@
+================================================================
+SIGGAN - ESTRUCTURA Y DIAGNÓSTICO DEL PROYECTO
+Fecha: 2026-03-26
+================================================================
+
+----------------------------------------------------------------
+1. ESTRUCTURA DE CARPETAS (sin node_modules / .git)
+----------------------------------------------------------------
+
+siggan-proyecto/
+├── README.md
+├── ESTRUCTURA_PROYECTO.txt         ← este archivo
+├── start-all.bat                   ← arranca los 3 servicios
+│
+├── Backend/
+│   ├── .env                        ← variables de entorno
+│   ├── .env.example
+│   ├── iris_service.py             ← microservicio Python (Flask, puerto 5000)
+│   ├── iris_db.json                ← base de embeddings de iris
+│   ├── package.json
+│   ├── tsconfig.json
+│   │
+│   ├── Formatos/                   ← plantillas DOCX para documentos SENASICA
+│   │   ├── Formato1_Programacion_Pruebas.docx
+│   │   ├── Formato2_Solicitud_Prueba.docx
+│   │   ├── acta_nacimiento_bovina.docx
+│   │   ├── compraventa_bovino.docx
+│   │   ├── solicitud_exportacion_ganado.docx
+│   │   └── UnionGanadera.png
+│   │
+│   ├── models/
+│   │   └── model_iris.pth          ← modelo CNN entrenado (PyTorch, ArcFace)
+│   │
+│   ├── prisma/
+│   │   ├── schema.prisma           ← modelos de BD
+│   │   ├── seed.ts                 ← datos de prueba
+│   │   └── migrations/             ← historial de migraciones
+│   │
+│   ├── src/
+│   │   ├── index.ts                ← servidor principal Express
+│   │   ├── config/
+│   │   │   └── database.ts
+│   │   ├── middleware/
+│   │   │   ├── auth.ts             ← JWT
+│   │   │   └── errorHandler.ts
+│   │   ├── services/
+│   │   │   └── folios.ts
+│   │   └── routes/                 ← 17 archivos de endpoints
+│   │       ├── admin.ts            → /api/admin
+│   │       ├── animales.ts         → /api/animales
+│   │       ├── aretes.ts           → /api/aretes
+│   │       ├── auth.ts             → /api/auth
+│   │       ├── biometria.ts        → /api/biometria
+│   │       ├── busqueda.ts         → /api/busqueda
+│   │       ├── cuarentena.ts       → /api/cuarentena
+│   │       ├── dashboard.ts        → /api/dashboard
+│   │       ├── documentos.ts       → /api/documentos
+│   │       ├── eventos.ts          → /api/eventos
+│   │       ├── formularios.ts      → /api/formularios
+│   │       ├── generarDocumentos.ts→ /api/generar-documentos
+│   │       ├── iot.ts              → /api/iot
+│   │       ├── marketplace.ts      → /api/marketplace
+│   │       ├── propietarios.ts     → /api/propietarios
+│   │       ├── swagger.ts          → /api/docs
+│   │       └── upps.ts             → /api/upps
+│   │
+│   └── uploads/
+│       └── documentos/
+│
+├── Frontend/
+│   └── siggan-web/
+│       └── src/
+│           ├── App.tsx
+│           ├── index.tsx
+│           ├── context/
+│           │   └── AuthContext.tsx
+│           ├── services/
+│           │   └── api.ts
+│           ├── components/
+│           │   ├── Layout.tsx
+│           │   └── Sidebar.tsx
+│           └── pages/              ← 20 páginas
+│               ├── AdminUsuariosPage.tsx
+│               ├── AnimalDetallePage.tsx
+│               ├── AnimalNuevoPage.tsx
+│               ├── AnimalesPage.tsx
+│               ├── AretesPage.tsx
+│               ├── BiometriaPage.tsx
+│               ├── BusquedaPage.tsx
+│               ├── CuarentenaPage.tsx
+│               ├── DashboardPage.tsx
+│               ├── EventosPage.tsx
+│               ├── FormulariosPage.tsx
+│               ├── IoTPage.tsx
+│               ├── LoginPage.tsx
+│               ├── MarketplacePage.tsx
+│               ├── NotificacionesPage.tsx
+│               ├── PlaceholderPages.tsx
+│               ├── PropietariosPage.tsx
+│               ├── RegistroPage.tsx
+│               ├── TrazabilidadPage.tsx
+│               └── UPPsPage.tsx
+│
+├── FOTOS/                          ← dataset de iris (vacas 1-18, 35)
+│   ├── Vaca1/ ... Vaca18/
+│   │   ├── Ojo 1/   (.HEIC, .jpg)
+│   │   └── Ojo 2/
+│   └── Creacion de carpetas.py
+│
+└── iris-training/                  ← pipeline de entrenamiento del modelo
+    ├── 01_cargar_dataset.py
+    ├── 02_recortar_iris.py
+    ├── 03_augmentation.py
+    ├── 04_preparar_datos.py
+    ├── 05_modelo.py
+    └── 06_train.py
+
+
+----------------------------------------------------------------
+2. BASE DE DATOS
+----------------------------------------------------------------
+
+Motor:      PostgreSQL 15+
+BD:         siggan_db
+Usuario:    postgres
+Puerto:     5432
+ORM:        Prisma (schema.prisma)
+
+Tablas (13 modelos):
+  usuarios              - Usuarios del sistema
+  documentos_usuario    - INE, e.firma, SAT, cédula profesional, etc.
+  propietarios          - Dueños de ganado
+  upps                  - Unidades de Producción Pecuaria
+  animales              - Ganado registrado
+  eventos_sanitarios    - Vacunaciones, pruebas TB/BR, tratamientos, pesajes
+  historial_aretes      - Trazabilidad de aretes (nacionales y de exportación)
+  formularios           - Formularios SENASICA generados
+  aretes_disponibles    - Pool/inventario de aretes
+  lecturas_iot          - Lecturas GPS/temperatura/batería de sensores
+  alertas_iot           - Alertas por umbrales
+  nodos_iot             - Dispositivos ESP32/LoRa registrados
+  ofertas_marketplace   - Compraventa de animales
+
+Campos clave de "animales":
+  areteNacional, areteExportacion, rfidTag, nombre, raza, sexo (MACHO/HEMBRA),
+  fechaNacimiento, color, peso, pesoNacimiento, estatusSanitario (SANO/EN_PRUEBA/
+  REACTOR/CUARENTENADO), irisHash, blockchainTokenId, uppId, propietarioId, madreId
+
+Roles (enum Rol):
+  SUPER_ADMIN > ADMIN > MVZ > PRODUCTOR
+
+
+----------------------------------------------------------------
+3. CONFIGURACIÓN (.env)
+----------------------------------------------------------------
+
+DATABASE_URL = postgresql://postgres:123456789@localhost:5432/siggan_db?schema=public
+JWT_SECRET   = siggan_secret_key_cambiar_en_produccion_2026
+JWT_EXPIRES_IN = 7d
+PORT         = 3001
+NODE_ENV     = development
+FRONTEND_URL = http://localhost:3000
+
+
+----------------------------------------------------------------
+4. CARPETA IoT & SENSORES
+----------------------------------------------------------------
+
+NO existe una carpeta física "IoT & Sensores" separada.
+El módulo IoT está distribuido así:
+  - Backend/src/routes/iot.ts       → endpoints de lecturas y alertas
+  - Frontend/.../pages/IoTPage.tsx  → interfaz de monitoreo
+  - prisma/schema.prisma            → modelos LecturaIoT, AlertaIoT, NodoIoT
+  - iris_service.py                 → (biometría, no IoT)
+
+Si necesitas crearla como carpeta de documentación o scripts separados,
+se puede agregar como: Backend/iot/ o en la raíz del proyecto.
+
+
+----------------------------------------------------------------
+5. TODOS LOS ENDPOINTS DE API
+----------------------------------------------------------------
+
+GET  /api/health                              → Estado del servidor
+
+/api/auth
+  POST /register                             → Solicitud de registro
+  POST /login                                → Inicio de sesión
+
+/api/animales
+  GET    /                                   → Listar animales
+  POST   /                                   → Registrar animal
+  GET    /:id                                → Detalle
+  PUT    /:id                                → Actualizar
+  DELETE /:id                                → Eliminar
+
+/api/propietarios
+  GET  /                                     → Listar
+  POST /                                     → Crear
+  GET  /:id                                  → Detalle
+
+/api/upps
+  GET  /                                     → Listar UPPs
+  POST /                                     → Crear
+  GET  /:id                                  → Detalle
+
+/api/dashboard
+  GET /stats                                 → Estadísticas generales
+
+/api/eventos
+  GET  /                                     → Listar eventos
+  POST /                                     → Registrar evento sanitario
+
+/api/aretes
+  GET  /                                     → Listar aretes disponibles
+  POST /asignar                              → Asignar arete a animal
+
+/api/busqueda
+  GET  /                                     → Búsqueda global
+
+/api/marketplace
+  GET  /                                     → Listar ofertas
+  POST /                                     → Publicar oferta
+  PUT  /:id                                  → Actualizar oferta
+
+/api/formularios
+  GET  /                                     → Listar formularios
+  POST /                                     → Crear formulario SENASICA
+
+/api/iot
+  GET /lecturas                              → Lecturas de sensores
+  GET /alertas                               → Alertas activas
+  POST /lecturas                             → Ingresar lectura
+
+/api/biometria
+  POST /registrar                            → Registrar iris de animal
+  POST /verificar                            → Verificar identidad por iris
+
+/api/cuarentena
+  GET  /                                     → Animales en cuarentena
+  POST /iniciar                              → Iniciar cuarentena
+  PUT  /:id/levantar                         → Levantar cuarentena
+
+/api/generar-documentos
+  POST /acta-nacimiento                      → { animalId }
+  POST /compraventa                          → { animalId, compradorId }
+  POST /programacion-pruebas                 → { uppId } (MVZ/ADMIN)
+  POST /solicitud-prueba                     → { uppId, motivo_numero } (MVZ/ADMIN)
+  POST /solicitud-exportacion                → { animalIds[] } (máx 10)
+
+/api/documentos
+  GET  /                                     → Listar documentos subidos
+  POST /upload                               → Subir documento de usuario
+
+/api/admin
+  GET  /usuarios                             → Listar todos los usuarios
+  PUT  /usuarios/:id/aprobar                 → Aprobar solicitud
+  PUT  /usuarios/:id/suspender               → Suspender usuario
+
+/api/docs                                    → Swagger UI
+
+
+----------------------------------------------------------------
+6. STACK COMPLETO
+----------------------------------------------------------------
+
+Backend:    Node.js 18+ / Express 4 / TypeScript 5 / Prisma 6
+BD:         PostgreSQL 15+
+Auth:       JWT + bcrypt
+Validación: Zod
+Docs:       Swagger
+
+Frontend:   React 19 / Tailwind CSS 4 / React Router v7
+Charts:     Recharts
+Icons:      Lucide React
+HTTP:       Axios
+
+IA/Biometría: Python 3.10 / Flask / PyTorch / OpenCV
+              CNN IrisEmbeddingNet + ArcFace Loss
+              Embeddings 128D, similitud coseno (umbral 0.65)
+              Precisión de validación: 99.37%
+
+Hardware IoT: ESP32 + LoRa (modelo NodoIoT tipo ESP32_LORA)
+================================================================
