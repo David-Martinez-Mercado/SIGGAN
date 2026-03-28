@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import prisma from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import QRCode from 'qrcode';
+import { registrarPorId } from '../services/blockchain.service';
 
 const router = Router();
 const IRIS_SERVICE = process.env.IRIS_SERVICE_URL || 'http://localhost:5000';
@@ -84,6 +85,9 @@ router.post('/iris/registrar', authMiddleware, async (req: AuthRequest, res: Res
       where: { id: animalId },
       data: { irisHash: resultado.iris_hash },
     });
+
+    // Re-registrar animal en blockchain con el nuevo irisHash
+    registrarPorId('animal', animalId).catch(e => console.error('[blockchain] error registrar iris:', e));
 
     res.json({
       success: true,

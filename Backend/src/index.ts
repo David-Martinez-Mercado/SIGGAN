@@ -22,6 +22,7 @@ import swaggerRoutes from './routes/swagger';
 import { errorHandler } from './middleware/errorHandler';
 import generarDocumentosRoutes from './routes/generarDocumentos';
 import cuarentenaRoutes from './routes/cuarentena';
+import blockchainRoutes from './routes/blockchain';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -51,6 +52,7 @@ app.use('/api/iot', iotRoutes);
 app.use('/api/biometria', biometriaRoutes);
 app.use('/api/generar-documentos', generarDocumentosRoutes);
 app.use('/api/cuarentena', cuarentenaRoutes);
+app.use('/api/blockchain', blockchainRoutes);
 
 app.use(errorHandler);
 app.use((req, res) => { res.status(404).json({ error: `Ruta no encontrada: ${req.method} ${req.path}` }); });

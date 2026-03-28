@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import prisma from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { registrarPorId } from '../services/blockchain.service';
 
 const router = Router();
 router.use(authMiddleware);
@@ -129,6 +130,12 @@ router.put('/:id/aceptar', async (req: AuthRequest, res: Response) => {
         data: { propietarioId: oferta.compradorId!, uppId: oferta.comprador!.upps[0].id },
       }),
     ]);
+
+    // Registrar venta cerrada en blockchain automáticamente
+    registrarPorId('venta', req.params.id as string).catch(e => console.error('[blockchain] error registrar venta:', e));
+    // Re-registrar el animal con su nuevo propietario
+    registrarPorId('animal', oferta.animalId).catch(e => console.error('[blockchain] error re-registrar animal tras venta:', e));
+
     res.json({ message: 'Venta completada. Animal transferido al comprador.' });
   } catch (error) { console.error(error); res.status(500).json({ error: 'Error al aceptar' }); }
 });

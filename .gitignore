@@ -1,0 +1,33 @@
+# Claude Code — NO subir
+.claude/
+
+# Node
+node_modules/
+dist/
+.env
+*.log
+
+# Uploads y archivos generados
+Backend/uploads/
+Backend/iris_db.json
+
+# Logs IoT
+"para sensores fisicos/logs/*.json"
+para sensores fisicos/logs/*.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+iris-training/venv/
+
+# Base de datos local
+*.db
+*.sqlite
+
+# OS
+.DS_Store
+Thumbs.db
+para sensores fisicos/Esquemas/.history

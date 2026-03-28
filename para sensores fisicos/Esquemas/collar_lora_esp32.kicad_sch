@@ -1,0 +1,778 @@
+(kicad_sch (version 20230121) (generator eeschema)
+  (uuid "a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+  (paper "A3")
+  (title_block
+    (title "Collar IoT LoRa ESP32 - SIGGAN")
+    (date "2026-03-26")
+    (rev "1.0")
+    (company "UNIPOLI - Universidad Politécnica del Estado de Durango")
+    (comment 1 "Autor: David Martínez")
+    (comment 2 "Sistema de Rastreo Ganado - Collar LoRa 915 MHz ISM")
+    (comment 3 "BETA - Prototipo educativo")
+  )
+
+  (lib_symbols
+    ;; ── Power: +3.3V ──────────────────────────────────────────────────────────
+    (symbol "power:+3.3V" (power) (pin_names (offset 0)) (in_bom no) (on_board no)
+      (symbol "power:+3.3V_0_1"
+        (polyline (pts (xy -0.762 1.27) (xy 0 2.54)) (stroke (width 0)) (fill (type none)))
+        (polyline (pts (xy 0 0) (xy 0 2.54)) (stroke (width 0)) (fill (type none)))
+        (polyline (pts (xy 0 2.54) (xy 0.762 1.27)) (stroke (width 0)) (fill (type none)))
+      )
+      (symbol "power:+3.3V_1_1"
+        (pin power_in line (at 0 0 90) (length 0)
+          (name "~" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))))
+    )
+    ;; ── Power: GND ────────────────────────────────────────────────────────────
+    (symbol "power:GND" (power) (pin_names (offset 0)) (in_bom no) (on_board no)
+      (symbol "power:GND_0_1"
+        (polyline (pts (xy 0 0) (xy 0 -1.27)) (stroke (width 0)) (fill (type none)))
+        (polyline (pts (xy -1.27 -1.27) (xy 1.27 -1.27)) (stroke (width 0)) (fill (type none)))
+        (polyline (pts (xy -0.762 -1.905) (xy 0.762 -1.905)) (stroke (width 0)) (fill (type none)))
+        (polyline (pts (xy -0.254 -2.54) (xy 0.254 -2.54)) (stroke (width 0)) (fill (type none)))
+      )
+      (symbol "power:GND_1_1"
+        (pin power_in line (at 0 0 270) (length 0)
+          (name "~" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))))
+    )
+
+    ;; ── U1: ESP32-S3 ──────────────────────────────────────────────────────────
+    (symbol "Custom:ESP32-S3" (in_bom yes) (on_board yes)
+      (symbol "Custom:ESP32-S3_0_1"
+        (rectangle (start -10.16 -17.78) (end 10.16 17.78)
+          (stroke (width 0.254) (type default)) (fill (type background)))
+        (text "ESP32-S3" (at 0 0 0) (effects (font (size 1.5 1.5) (bold yes))))
+      )
+      (symbol "Custom:ESP32-S3_1_1"
+        (pin bidirectional line (at -12.7 15.24 0) (length 2.54)
+          (name "GPIO2" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at -12.7 12.7 0) (length 2.54)
+          (name "GPIO3" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at -12.7 10.16 0) (length 2.54)
+          (name "GPIO4" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at -12.7 7.62 0) (length 2.54)
+          (name "GPIO5" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at -12.7 5.08 0) (length 2.54)
+          (name "GPIO17" (effects (font (size 1.27 1.27)))) (number "5" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at -12.7 2.54 0) (length 2.54)
+          (name "GPIO18" (effects (font (size 1.27 1.27)))) (number "6" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at -12.7 0 0) (length 2.54)
+          (name "GPIO19" (effects (font (size 1.27 1.27)))) (number "7" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at -12.7 -2.54 0) (length 2.54)
+          (name "GPIO22" (effects (font (size 1.27 1.27)))) (number "8" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at -12.7 -5.08 0) (length 2.54)
+          (name "GPIO23" (effects (font (size 1.27 1.27)))) (number "9" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at -12.7 -10.16 0) (length 2.54)
+          (name "EN" (effects (font (size 1.27 1.27)))) (number "10" (effects (font (size 1.27 1.27)))))
+        (pin power_in line (at -5.08 20.32 270) (length 2.54)
+          (name "GND" (effects (font (size 1.27 1.27)))) (number "11" (effects (font (size 1.27 1.27)))))
+        (pin power_in line (at 5.08 20.32 270) (length 2.54)
+          (name "VCC" (effects (font (size 1.27 1.27)))) (number "12" (effects (font (size 1.27 1.27)))))
+      )
+    )
+
+    ;; ── U2: MAX30102 ──────────────────────────────────────────────────────────
+    (symbol "Custom:MAX30102" (in_bom yes) (on_board yes)
+      (symbol "Custom:MAX30102_0_1"
+        (rectangle (start -5.08 -3.81) (end 5.08 3.81)
+          (stroke (width 0.254) (type default)) (fill (type background)))
+        (text "MAX30102" (at 0 0 0) (effects (font (size 1.0 1.0) (bold yes))))
+      )
+      (symbol "Custom:MAX30102_1_1"
+        (pin power_in line (at -7.62 1.27 0) (length 2.54)
+          (name "VCC" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+        (pin power_in line (at -7.62 -1.27 0) (length 2.54)
+          (name "GND" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+        (pin input line (at 7.62 1.27 180) (length 2.54)
+          (name "SCL" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at 7.62 -1.27 180) (length 2.54)
+          (name "SDA" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27)))))
+      )
+    )
+
+    ;; ── U3: DHT22 ─────────────────────────────────────────────────────────────
+    (symbol "Custom:DHT22" (in_bom yes) (on_board yes)
+      (symbol "Custom:DHT22_0_1"
+        (rectangle (start -5.08 -3.81) (end 5.08 3.81)
+          (stroke (width 0.254) (type default)) (fill (type background)))
+        (text "DHT22" (at 0 0 0) (effects (font (size 1.0 1.0) (bold yes))))
+      )
+      (symbol "Custom:DHT22_1_1"
+        (pin power_in line (at -7.62 2.54 0) (length 2.54)
+          (name "VCC" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at -7.62 0 0) (length 2.54)
+          (name "DATA" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+        (pin no_connect line (at -7.62 -1.27 0) (length 2.54)
+          (name "NC" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27)))))
+        (pin power_in line (at -7.62 -2.54 0) (length 2.54)
+          (name "GND" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27)))))
+      )
+    )
+
+    ;; ── U4: MPU6050 ───────────────────────────────────────────────────────────
+    (symbol "Custom:MPU6050" (in_bom yes) (on_board yes)
+      (symbol "Custom:MPU6050_0_1"
+        (rectangle (start -5.08 -5.08) (end 5.08 5.08)
+          (stroke (width 0.254) (type default)) (fill (type background)))
+        (text "MPU6050" (at 0 0 0) (effects (font (size 1.0 1.0) (bold yes))))
+      )
+      (symbol "Custom:MPU6050_1_1"
+        (pin power_in line (at -7.62 3.81 0) (length 2.54)
+          (name "VCC" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+        (pin power_in line (at -7.62 -3.81 0) (length 2.54)
+          (name "GND" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+        (pin input line (at 7.62 3.81 180) (length 2.54)
+          (name "SCL" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at 7.62 1.27 180) (length 2.54)
+          (name "SDA" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27)))))
+        (pin output line (at 7.62 -1.27 180) (length 2.54)
+          (name "INT" (effects (font (size 1.27 1.27)))) (number "5" (effects (font (size 1.27 1.27)))))
+        (pin input line (at 7.62 -3.81 180) (length 2.54)
+          (name "AD0" (effects (font (size 1.27 1.27)))) (number "6" (effects (font (size 1.27 1.27)))))
+      )
+    )
+
+    ;; ── U5: SX1278 LoRa ───────────────────────────────────────────────────────
+    (symbol "Custom:SX1278" (in_bom yes) (on_board yes)
+      (symbol "Custom:SX1278_0_1"
+        (rectangle (start -6.35 -10.16) (end 6.35 10.16)
+          (stroke (width 0.254) (type default)) (fill (type background)))
+        (text "SX1278" (at 0 0 0) (effects (font (size 1.0 1.0) (bold yes))))
+        (text "LoRa 915MHz" (at 0 -1.5 0) (effects (font (size 0.8 0.8))))
+      )
+      (symbol "Custom:SX1278_1_1"
+        (pin power_in line (at -8.89 7.62 0) (length 2.54)
+          (name "VCC" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+        (pin input line (at -8.89 5.08 0) (length 2.54)
+          (name "MOSI" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+        (pin output line (at -8.89 2.54 0) (length 2.54)
+          (name "MISO" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27)))))
+        (pin input line (at -8.89 0 0) (length 2.54)
+          (name "CLK" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27)))))
+        (pin input line (at -8.89 -2.54 0) (length 2.54)
+          (name "CS" (effects (font (size 1.27 1.27)))) (number "5" (effects (font (size 1.27 1.27)))))
+        (pin output line (at -8.89 -5.08 0) (length 2.54)
+          (name "IRQ" (effects (font (size 1.27 1.27)))) (number "6" (effects (font (size 1.27 1.27)))))
+        (pin input line (at -8.89 -7.62 0) (length 2.54)
+          (name "RESET" (effects (font (size 1.27 1.27)))) (number "7" (effects (font (size 1.27 1.27)))))
+        (pin power_in line (at 0 12.7 270) (length 2.54)
+          (name "GND" (effects (font (size 1.27 1.27)))) (number "8" (effects (font (size 1.27 1.27)))))
+        (pin passive line (at 6.35 0 180) (length 2.54)
+          (name "ANT" (effects (font (size 1.27 1.27)))) (number "9" (effects (font (size 1.27 1.27)))))
+      )
+    )
+
+    ;; ── U6: BQ24195 ───────────────────────────────────────────────────────────
+    (symbol "Custom:BQ24195" (in_bom yes) (on_board yes)
+      (symbol "Custom:BQ24195_0_1"
+        (rectangle (start -6.35 -7.62) (end 6.35 7.62)
+          (stroke (width 0.254) (type default)) (fill (type background)))
+        (text "BQ24195" (at 0 0 0) (effects (font (size 1.0 1.0) (bold yes))))
+        (text "LiPo Charger" (at 0 -1.5 0) (effects (font (size 0.8 0.8))))
+      )
+      (symbol "Custom:BQ24195_1_1"
+        (pin power_in line (at -8.89 5.08 0) (length 2.54)
+          (name "VBUS" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at -8.89 2.54 0) (length 2.54)
+          (name "USB_P" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+        (pin bidirectional line (at -8.89 0 0) (length 2.54)
+          (name "USB_N" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27)))))
+        (pin input line (at -8.89 -2.54 0) (length 2.54)
+          (name "EN" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27)))))
+        (pin output line (at -8.89 -5.08 0) (length 2.54)
+          (name "~{INT}" (effects (font (size 1.27 1.27)))) (number "5" (effects (font (size 1.27 1.27)))))
+        (pin power_out line (at 8.89 5.08 180) (length 2.54)
+          (name "BATT+" (effects (font (size 1.27 1.27)))) (number "6" (effects (font (size 1.27 1.27)))))
+        (pin power_in line (at 8.89 0 180) (length 2.54)
+          (name "VCC" (effects (font (size 1.27 1.27)))) (number "7" (effects (font (size 1.27 1.27)))))
+        (pin power_in line (at 8.89 -5.08 180) (length 2.54)
+          (name "GND" (effects (font (size 1.27 1.27)))) (number "8" (effects (font (size 1.27 1.27)))))
+      )
+    )
+
+    ;; ── J1: USB-C ─────────────────────────────────────────────────────────────
+    (symbol "Connector:USB_C_Receptacle_USB2.0" (pin_names (offset 1.016)) (in_bom yes) (on_board yes)
+      (symbol "Connector:USB_C_Receptacle_USB2.0_0_1"
+        (rectangle (start -5.08 -5.08) (end 5.08 5.08)
+          (stroke (width 0.254) (type default)) (fill (type background)))
+        (text "USB-C" (at 0 0 0) (effects (font (size 1.0 1.0) (bold yes))))
+      )
+      (symbol "Connector:USB_C_Receptacle_USB2.0_1_1"
+        (pin passive line (at -7.62 3.81 0) (length 2.54)
+          (name "VBUS" (effects (font (size 1.27 1.27)))) (number "A1" (effects (font (size 1.27 1.27)))))
+        (pin passive line (at -7.62 1.27 0) (length 2.54)
+          (name "D+" (effects (font (size 1.27 1.27)))) (number "B7" (effects (font (size 1.27 1.27)))))
+        (pin passive line (at -7.62 -1.27 0) (length 2.54)
+          (name "D-" (effects (font (size 1.27 1.27)))) (number "A7" (effects (font (size 1.27 1.27)))))
+        (pin passive line (at -7.62 -3.81 0) (length 2.54)
+          (name "GND" (effects (font (size 1.27 1.27)))) (number "A12" (effects (font (size 1.27 1.27)))))
+      )
+    )
+
+    ;; ── J2: JST XH 2-pin ─────────────────────────────────────────────────────
+    (symbol "Connector_JST:JST_XH_S2B-XH-A_1x02" (pin_names (offset 1.016)) (in_bom yes) (on_board yes)
+      (symbol "Connector_JST:JST_XH_S2B-XH-A_1x02_0_1"
+        (rectangle (start -3.81 -2.54) (end 3.81 2.54)
+          (stroke (width 0.254) (type default)) (fill (type background)))
+        (text "JST-XH" (at 0 0 0) (effects (font (size 1.0 1.0) (bold yes))))
+      )
+      (symbol "Connector_JST:JST_XH_S2B-XH-A_1x02_1_1"
+        (pin passive line (at -6.35 1.27 0) (length 2.54)
+          (name "BATT+" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+        (pin passive line (at -6.35 -1.27 0) (length 2.54)
+          (name "GND" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+      )
+    )
+
+    ;; ── BAT1: Battery ─────────────────────────────────────────────────────────
+    (symbol "Device:Battery" (pin_names (offset 0)) (in_bom yes) (on_board yes)
+      (symbol "Device:Battery_0_1"
+        (rectangle (start -2.54 -5.08) (end 2.54 5.08)
+          (stroke (width 0.254) (type default)) (fill (type background)))
+        (polyline (pts (xy -1.524 0.762) (xy 1.524 0.762)) (stroke (width 0.508)) (fill (type none)))
+        (polyline (pts (xy -0.762 -0.762) (xy 0.762 -0.762)) (stroke (width 0.254)) (fill (type none)))
+        (text "+" (at 0 2.54 0) (effects (font (size 1.27 1.27) (bold yes))))
+        (text "-" (at 0 -2.54 0) (effects (font (size 1.27 1.27) (bold yes))))
+      )
+      (symbol "Device:Battery_1_1"
+        (pin power_out line (at 0 7.62 270) (length 2.54)
+          (name "+" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+        (pin power_in line (at 0 -7.62 90) (length 2.54)
+          (name "-" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+      )
+    )
+
+    ;; ── R: Resistor ───────────────────────────────────────────────────────────
+    (symbol "Device:R" (pin_names (offset 0.254)) (in_bom yes) (on_board yes)
+      (symbol "Device:R_0_1"
+        (rectangle (start -1.016 -2.54) (end 1.016 2.54)
+          (stroke (width 0.254) (type default)) (fill (type background)))
+      )
+      (symbol "Device:R_1_1"
+        (pin passive line (at 0 3.81 270) (length 1.27)
+          (name "~" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+        (pin passive line (at 0 -3.81 90) (length 1.27)
+          (name "~" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+      )
+    )
+
+    ;; ── C: Capacitor ──────────────────────────────────────────────────────────
+    (symbol "Device:C" (pin_names (offset 0.254)) (in_bom yes) (on_board yes)
+      (symbol "Device:C_0_1"
+        (polyline (pts (xy -2.032 0.762) (xy 2.032 0.762)) (stroke (width 0.508)) (fill (type none)))
+        (polyline (pts (xy -2.032 -0.762) (xy 2.032 -0.762)) (stroke (width 0.508)) (fill (type none)))
+      )
+      (symbol "Device:C_1_1"
+        (pin passive line (at 0 3.81 270) (length 3.048)
+          (name "~" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+        (pin passive line (at 0 -3.81 90) (length 3.048)
+          (name "~" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+      )
+    )
+
+    ;; ── L: Inductor ───────────────────────────────────────────────────────────
+    (symbol "Device:L" (pin_names (offset 1.016)) (in_bom yes) (on_board yes)
+      (symbol "Device:L_0_1"
+        (polyline (pts (xy 0 2.54) (xy 0 -2.54)) (stroke (width 0.254)) (fill (type none)))
+        (circle (center 0 1.27) (radius 1.27) (stroke (width 0.254)) (fill (type none)))
+        (circle (center 0 -1.27) (radius 1.27) (stroke (width 0.254)) (fill (type none)))
+      )
+      (symbol "Device:L_1_1"
+        (pin passive line (at 0 3.81 270) (length 1.27)
+          (name "1" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+        (pin passive line (at 0 -3.81 90) (length 1.27)
+          (name "2" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+      )
+    )
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════════════════
+  ;; COMPONENT INSTANCES
+  ;; ═══════════════════════════════════════════════════════════════════════════
+
+  ;; ── U1: ESP32-S3 (center of schematic) ───────────────────────────────────
+  (symbol (lib_id "Custom:ESP32-S3") (at 160 120 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "u1-esp32-0000-0000-0000-000000000001")
+    (property "Reference" "U1" (at 160 96 0)
+      (effects (font (size 1.27 1.27) (bold yes))))
+    (property "Value" "ESP32-S3" (at 160 99 0)
+      (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_DFN_QFN:ESP32-S3-WROOM-1_18x20mm" (at 160 120 0)
+      (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-u1-gpio2"))
+    (pin "2" (uuid "pin-u1-gpio3"))
+    (pin "3" (uuid "pin-u1-gpio4"))
+    (pin "4" (uuid "pin-u1-gpio5"))
+    (pin "5" (uuid "pin-u1-gpio17"))
+    (pin "6" (uuid "pin-u1-gpio18"))
+    (pin "7" (uuid "pin-u1-gpio19"))
+    (pin "8" (uuid "pin-u1-gpio22"))
+    (pin "9" (uuid "pin-u1-gpio23"))
+    (pin "10" (uuid "pin-u1-en"))
+    (pin "11" (uuid "pin-u1-gnd"))
+    (pin "12" (uuid "pin-u1-vcc"))
+  )
+
+  ;; ── U2: MAX30102 ─────────────────────────────────────────────────────────
+  (symbol (lib_id "Custom:MAX30102") (at 55 65 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "u2-max30102-0000-0000-000000000002")
+    (property "Reference" "U2" (at 55 57 0)
+      (effects (font (size 1.27 1.27) (bold yes))))
+    (property "Value" "MAX30102" (at 55 59 0)
+      (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_LGA:MAX30102_LGA10" (at 55 65 0)
+      (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-u2-vcc"))
+    (pin "2" (uuid "pin-u2-gnd"))
+    (pin "3" (uuid "pin-u2-scl"))
+    (pin "4" (uuid "pin-u2-sda"))
+  )
+
+  ;; ── U3: DHT22 ────────────────────────────────────────────────────────────
+  (symbol (lib_id "Custom:DHT22") (at 55 115 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "u3-dht22-0000-0000-000000000003")
+    (property "Reference" "U3" (at 55 108 0)
+      (effects (font (size 1.27 1.27) (bold yes))))
+    (property "Value" "DHT22" (at 55 110 0)
+      (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Sensor_Temperature_Humidity:DHT22_5pins_TH" (at 55 115 0)
+      (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-u3-vcc"))
+    (pin "2" (uuid "pin-u3-data"))
+    (pin "3" (uuid "pin-u3-nc"))
+    (pin "4" (uuid "pin-u3-gnd"))
+  )
+
+  ;; ── U4: MPU6050 ──────────────────────────────────────────────────────────
+  (symbol (lib_id "Custom:MPU6050") (at 55 165 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "u4-mpu6050-0000-0000-000000000004")
+    (property "Reference" "U4" (at 55 155 0)
+      (effects (font (size 1.27 1.27) (bold yes))))
+    (property "Value" "MPU6050" (at 55 157 0)
+      (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_LGA:MPU6050_LGA16" (at 55 165 0)
+      (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-u4-vcc"))
+    (pin "2" (uuid "pin-u4-gnd"))
+    (pin "3" (uuid "pin-u4-scl"))
+    (pin "4" (uuid "pin-u4-sda"))
+    (pin "5" (uuid "pin-u4-int"))
+    (pin "6" (uuid "pin-u4-ad0"))
+  )
+
+  ;; ── U5: SX1278 ───────────────────────────────────────────────────────────
+  (symbol (lib_id "Custom:SX1278") (at 285 100 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "u5-sx1278-0000-0000-000000000005")
+    (property "Reference" "U5" (at 285 85 0)
+      (effects (font (size 1.27 1.27) (bold yes))))
+    (property "Value" "SX1278" (at 285 87 0)
+      (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_DFN:DFN-16-1EP_4x5mm_P0.5mm" (at 285 100 0)
+      (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-u5-vcc"))
+    (pin "2" (uuid "pin-u5-mosi"))
+    (pin "3" (uuid "pin-u5-miso"))
+    (pin "4" (uuid "pin-u5-clk"))
+    (pin "5" (uuid "pin-u5-cs"))
+    (pin "6" (uuid "pin-u5-irq"))
+    (pin "7" (uuid "pin-u5-reset"))
+    (pin "8" (uuid "pin-u5-gnd"))
+    (pin "9" (uuid "pin-u5-ant"))
+  )
+
+  ;; ── U6: BQ24195 ──────────────────────────────────────────────────────────
+  (symbol (lib_id "Custom:BQ24195") (at 185 230 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "u6-bq24195-0000-0000-000000000006")
+    (property "Reference" "U6" (at 185 218 0)
+      (effects (font (size 1.27 1.27) (bold yes))))
+    (property "Value" "BQ24195" (at 185 220 0)
+      (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_BGA:BQ24195_VQFN24" (at 185 230 0)
+      (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-u6-vbus"))
+    (pin "2" (uuid "pin-u6-usbp"))
+    (pin "3" (uuid "pin-u6-usbn"))
+    (pin "4" (uuid "pin-u6-en"))
+    (pin "5" (uuid "pin-u6-int"))
+    (pin "6" (uuid "pin-u6-batt"))
+    (pin "7" (uuid "pin-u6-vcc"))
+    (pin "8" (uuid "pin-u6-gnd"))
+  )
+
+  ;; ── J1: USB-C ────────────────────────────────────────────────────────────
+  (symbol (lib_id "Connector:USB_C_Receptacle_USB2.0") (at 95 240 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "j1-usbc-0000-0000-000000000007")
+    (property "Reference" "J1" (at 95 230 0)
+      (effects (font (size 1.27 1.27) (bold yes))))
+    (property "Value" "USB_C_USB2.0" (at 95 232 0)
+      (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12" (at 95 240 0)
+      (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "A1" (uuid "pin-j1-vbus"))
+    (pin "B7" (uuid "pin-j1-dp"))
+    (pin "A7" (uuid "pin-j1-dm"))
+    (pin "A12" (uuid "pin-j1-gnd"))
+  )
+
+  ;; ── J2: JST XH Batería ───────────────────────────────────────────────────
+  (symbol (lib_id "Connector_JST:JST_XH_S2B-XH-A_1x02") (at 310 240 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "j2-jst-00000-0000-000000000008")
+    (property "Reference" "J2" (at 310 233 0)
+      (effects (font (size 1.27 1.27) (bold yes))))
+    (property "Value" "JST_XH_2pin_BATT" (at 310 235 0)
+      (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_JST:JST_XH_S2B-XH-A_1x02_P2.50mm_Horizontal" (at 310 240 0)
+      (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-j2-batt"))
+    (pin "2" (uuid "pin-j2-gnd"))
+  )
+
+  ;; ── BAT1: LiPo 3.7V ──────────────────────────────────────────────────────
+  (symbol (lib_id "Device:Battery") (at 40 240 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "bat1-0000-0000-0000-000000000009")
+    (property "Reference" "BAT1" (at 40 228 0)
+      (effects (font (size 1.27 1.27) (bold yes))))
+    (property "Value" "LiPo 3.7V 4000mAh" (at 40 231 0)
+      (effects (font (size 1.27 1.27))))
+    (pin "1" (uuid "pin-bat1-pos"))
+    (pin "2" (uuid "pin-bat1-neg"))
+  )
+
+  ;; ── R1: 10kΩ pull-up SCL ─────────────────────────────────────────────────
+  (symbol (lib_id "Device:R") (at 120 80 90) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "r1-10k-scl-000000000010")
+    (property "Reference" "R1" (at 123 80 90)
+      (effects (font (size 1.27 1.27))))
+    (property "Value" "10kΩ" (at 117 80 90)
+      (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_0603_1608Metric" (at 120 80 0)
+      (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-r1-1"))
+    (pin "2" (uuid "pin-r1-2"))
+  )
+
+  ;; ── R2: 10kΩ pull-up SDA ─────────────────────────────────────────────────
+  (symbol (lib_id "Device:R") (at 120 95 90) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "r2-10k-sda-000000000011")
+    (property "Reference" "R2" (at 123 95 90)
+      (effects (font (size 1.27 1.27))))
+    (property "Value" "10kΩ" (at 117 95 90)
+      (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_0603_1608Metric" (at 120 95 0)
+      (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-r2-1"))
+    (pin "2" (uuid "pin-r2-2"))
+  )
+
+  ;; ── L1: 10µH ─────────────────────────────────────────────────────────────
+  (symbol (lib_id "Device:L") (at 305 165 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "l1-10uh-0000-0000-000000000012")
+    (property "Reference" "L1" (at 308 162 0)
+      (effects (font (size 1.27 1.27))))
+    (property "Value" "10µH" (at 308 167 0)
+      (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Inductor_SMD:L_0805_2012Metric" (at 305 165 0)
+      (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-l1-1"))
+    (pin "2" (uuid "pin-l1-2"))
+  )
+
+  ;; ── C1-C2: Desacople ESP32 ────────────────────────────────────────────────
+  (symbol (lib_id "Device:C") (at 148 148 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "c1-100nf-esp32a-0000-000000000013")
+    (property "Reference" "C1" (at 151 145 0) (effects (font (size 1.0 1.0))))
+    (property "Value" "100nF" (at 151 149 0) (effects (font (size 1.0 1.0))))
+    (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-c1-1")) (pin "2" (uuid "pin-c1-2"))
+  )
+  (symbol (lib_id "Device:C") (at 155 148 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "c2-100nf-esp32b-0000-000000000014")
+    (property "Reference" "C2" (at 158 145 0) (effects (font (size 1.0 1.0))))
+    (property "Value" "100nF" (at 158 149 0) (effects (font (size 1.0 1.0))))
+    (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-c2-1")) (pin "2" (uuid "pin-c2-2"))
+  )
+
+  ;; ── C3-C4: Desacople Sensores I2C ────────────────────────────────────────
+  (symbol (lib_id "Device:C") (at 37 72 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "c3-100nf-i2ca-0000-000000000015")
+    (property "Reference" "C3" (at 40 69 0) (effects (font (size 1.0 1.0))))
+    (property "Value" "100nF" (at 40 73 0) (effects (font (size 1.0 1.0))))
+    (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-c3-1")) (pin "2" (uuid "pin-c3-2"))
+  )
+  (symbol (lib_id "Device:C") (at 44 72 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "c4-100nf-i2cb-0000-000000000016")
+    (property "Reference" "C4" (at 47 69 0) (effects (font (size 1.0 1.0))))
+    (property "Value" "100nF" (at 47 73 0) (effects (font (size 1.0 1.0))))
+    (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-c4-1")) (pin "2" (uuid "pin-c4-2"))
+  )
+
+  ;; ── C5-C6: Desacople SX1278 ──────────────────────────────────────────────
+  (symbol (lib_id "Device:C") (at 270 118 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "c5-100nf-loraa-0000-000000000017")
+    (property "Reference" "C5" (at 273 115 0) (effects (font (size 1.0 1.0))))
+    (property "Value" "100nF" (at 273 119 0) (effects (font (size 1.0 1.0))))
+    (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-c5-1")) (pin "2" (uuid "pin-c5-2"))
+  )
+  (symbol (lib_id "Device:C") (at 277 118 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "c6-100nf-lorab-0000-000000000018")
+    (property "Reference" "C6" (at 280 115 0) (effects (font (size 1.0 1.0))))
+    (property "Value" "100nF" (at 280 119 0) (effects (font (size 1.0 1.0))))
+    (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-c6-1")) (pin "2" (uuid "pin-c6-2"))
+  )
+
+  ;; ── C7-C8: Desacople USB/Carga ───────────────────────────────────────────
+  (symbol (lib_id "Device:C") (at 160 255 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "c7-100nf-usba-0000-000000000019")
+    (property "Reference" "C7" (at 163 252 0) (effects (font (size 1.0 1.0))))
+    (property "Value" "100nF" (at 163 256 0) (effects (font (size 1.0 1.0))))
+    (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-c7-1")) (pin "2" (uuid "pin-c7-2"))
+  )
+  (symbol (lib_id "Device:C") (at 167 255 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "c8-100nf-usbb-0000-000000000020")
+    (property "Reference" "C8" (at 170 252 0) (effects (font (size 1.0 1.0))))
+    (property "Value" "100nF" (at 170 256 0) (effects (font (size 1.0 1.0))))
+    (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-c8-1")) (pin "2" (uuid "pin-c8-2"))
+  )
+
+  ;; ── C9-C10: Desacople Batería ─────────────────────────────────────────────
+  (symbol (lib_id "Device:C") (at 55 250 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "c9-100nf-batta-0000-000000000021")
+    (property "Reference" "C9" (at 58 247 0) (effects (font (size 1.0 1.0))))
+    (property "Value" "100nF" (at 58 251 0) (effects (font (size 1.0 1.0))))
+    (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-c9-1")) (pin "2" (uuid "pin-c9-2"))
+  )
+  (symbol (lib_id "Device:C") (at 62 250 0) (unit 1) (in_bom yes) (on_board yes)
+    (uuid "c10-100nf-battb-000-000000000022")
+    (property "Reference" "C10" (at 65 247 0) (effects (font (size 1.0 1.0))))
+    (property "Value" "100nF" (at 65 251 0) (effects (font (size 1.0 1.0))))
+    (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (pin "1" (uuid "pin-c10-1")) (pin "2" (uuid "pin-c10-2"))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════════════════
+  ;; POWER SYMBOLS
+  ;; ═══════════════════════════════════════════════════════════════════════════
+
+  ;; +3.3V near ESP32 (top)
+  (symbol (lib_id "power:+3.3V") (at 165 97 0) (unit 1) (in_bom no) (on_board no)
+    (uuid "pwr-vcc-esp32-001") (property "Reference" "#PWR01" (at 165 101 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "+3.3V" (at 165 94 0) (effects (font (size 1.27 1.27)))) (pin "1" (uuid "pwrpin-vcc-esp32")))
+  ;; GND near ESP32 (bottom)
+  (symbol (lib_id "power:GND") (at 155 143 0) (unit 1) (in_bom no) (on_board no)
+    (uuid "pwr-gnd-esp32-001") (property "Reference" "#PWR02" (at 155 143 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "GND" (at 155 146 0) (effects (font (size 1.27 1.27)))) (pin "1" (uuid "pwrpin-gnd-esp32")))
+
+  ;; +3.3V near sensors
+  (symbol (lib_id "power:+3.3V") (at 38 68 0) (unit 1) (in_bom no) (on_board no)
+    (uuid "pwr-vcc-sens-001") (property "Reference" "#PWR03" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "+3.3V" (at 38 65 0) (effects (font (size 1.27 1.27)))) (pin "1" (uuid "pwrpin-vcc-sens")))
+  ;; GND near sensors
+  (symbol (lib_id "power:GND") (at 38 175 0) (unit 1) (in_bom no) (on_board no)
+    (uuid "pwr-gnd-sens-001") (property "Reference" "#PWR04" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "GND" (at 38 178 0) (effects (font (size 1.27 1.27)))) (pin "1" (uuid "pwrpin-gnd-sens")))
+
+  ;; +3.3V near LoRa
+  (symbol (lib_id "power:+3.3V") (at 276 88 0) (unit 1) (in_bom no) (on_board no)
+    (uuid "pwr-vcc-lora-001") (property "Reference" "#PWR05" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "+3.3V" (at 276 85 0) (effects (font (size 1.27 1.27)))) (pin "1" (uuid "pwrpin-vcc-lora")))
+  ;; GND near LoRa
+  (symbol (lib_id "power:GND") (at 285 115 0) (unit 1) (in_bom no) (on_board no)
+    (uuid "pwr-gnd-lora-001") (property "Reference" "#PWR06" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "GND" (at 285 118 0) (effects (font (size 1.27 1.27)))) (pin "1" (uuid "pwrpin-gnd-lora")))
+
+  ;; GND near charger/battery area
+  (symbol (lib_id "power:GND") (at 185 241 0) (unit 1) (in_bom no) (on_board no)
+    (uuid "pwr-gnd-batt-001") (property "Reference" "#PWR07" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "GND" (at 185 244 0) (effects (font (size 1.27 1.27)))) (pin "1" (uuid "pwrpin-gnd-batt")))
+
+  ;; ═══════════════════════════════════════════════════════════════════════════
+  ;; NET LABELS - I2C Bus
+  ;; ═══════════════════════════════════════════════════════════════════════════
+  (label "SCL_I2C" (at 147.3 117.46 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-scl-esp32"))
+  (label "SCL_I2C" (at 62.62 63.73 0)
+    (effects (font (size 1.27 1.27))) (uuid "lbl-scl-max30102"))
+  (label "SCL_I2C" (at 62.62 161.19 0)
+    (effects (font (size 1.27 1.27))) (uuid "lbl-scl-mpu6050"))
+  (label "SCL_I2C" (at 120 76.19 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-scl-r1"))
+
+  (label "SDA_I2C" (at 147.3 119.92 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-sda-esp32"))
+  (label "SDA_I2C" (at 62.62 66.27 0)
+    (effects (font (size 1.27 1.27))) (uuid "lbl-sda-max30102"))
+  (label "SDA_I2C" (at 62.62 163.73 0)
+    (effects (font (size 1.27 1.27))) (uuid "lbl-sda-mpu6050"))
+  (label "SDA_I2C" (at 120 91.19 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-sda-r2"))
+
+  ;; ── Net Labels - DHT22 ────────────────────────────────────────────────────
+  (label "GPIO4_DHT" (at 147.3 109.84 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-gpio4-esp32"))
+  (label "GPIO4_DHT" (at 47.38 115 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-gpio4-dht22"))
+
+  ;; ── Net Labels - SPI Bus ──────────────────────────────────────────────────
+  (label "MOSI_SPI" (at 147.3 117.46 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-mosi-esp32"))
+  (label "MOSI_SPI" (at 276.11 94.92 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-mosi-sx1278"))
+
+  (label "MISO_SPI" (at 147.3 120 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-miso-esp32"))
+  (label "MISO_SPI" (at 276.11 97.46 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-miso-sx1278"))
+
+  (label "CLK_SPI" (at 147.3 112.38 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-clk-esp32"))
+  (label "CLK_SPI" (at 276.11 100 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-clk-sx1278"))
+
+  (label "CS_LoRa" (at 147.3 114.92 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-cs-esp32"))
+  (label "CS_LoRa" (at 276.11 102.54 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-cs-sx1278"))
+
+  (label "IRQ_LoRa" (at 147.3 104.76 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-irq-esp32"))
+  (label "IRQ_LoRa" (at 276.11 105.08 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-irq-sx1278"))
+
+  (label "RST_LoRa" (at 147.3 107.3 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-rst-esp32"))
+  (label "RST_LoRa" (at 276.11 107.62 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-rst-sx1278"))
+
+  ;; ── Net Labels - USB & Battery Charger ────────────────────────────────────
+  (label "VBUS_USB" (at 87.38 236.19 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-vbus-j1"))
+  (label "VBUS_USB" (at 176.11 224.92 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-vbus-u6"))
+
+  (label "USB_P" (at 87.38 238.73 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-usbp-j1"))
+  (label "USB_P" (at 176.11 227.46 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-usbp-u6"))
+
+  (label "USB_N" (at 87.38 241.27 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-usbn-j1"))
+  (label "USB_N" (at 176.11 230 180)
+    (effects (font (size 1.27 1.27)) (justify right)) (uuid "lbl-usbn-u6"))
+
+  (label "BATT_OUT" (at 193.89 224.92 0)
+    (effects (font (size 1.27 1.27))) (uuid "lbl-batt-u6"))
+  (label "BATT_OUT" (at 303.65 238.73 0)
+    (effects (font (size 1.27 1.27))) (uuid "lbl-batt-j2"))
+  (label "BATT_OUT" (at 40 232.38 0)
+    (effects (font (size 1.27 1.27))) (uuid "lbl-batt-bat1"))
+
+  ;; ── Net Labels - I2C pull-up resistors ────────────────────────────────────
+  ;; R1 pin1 → +3.3V (top), pin2 → SCL_I2C
+  ;; R2 pin1 → +3.3V (top), pin2 → SDA_I2C
+
+  ;; ═══════════════════════════════════════════════════════════════════════════
+  ;; SHORT WIRES - Connecting pin tips to net labels
+  ;; (each wire is 2.54mm, connecting pin to the label endpoint)
+  ;; ═══════════════════════════════════════════════════════════════════════════
+
+  ;; ESP32 pin stubs (left side pins at x=160-12.7=147.3)
+  (wire (pts (xy 147.3 104.76) (xy 145 104.76)) (stroke (width 0.254) (type default)) (uuid "w-u1-gpio2"))
+  (wire (pts (xy 147.3 107.3)  (xy 145 107.3))  (stroke (width 0.254) (type default)) (uuid "w-u1-gpio3"))
+  (wire (pts (xy 147.3 109.84) (xy 145 109.84)) (stroke (width 0.254) (type default)) (uuid "w-u1-gpio4"))
+  (wire (pts (xy 147.3 112.38) (xy 145 112.38)) (stroke (width 0.254) (type default)) (uuid "w-u1-gpio5"))
+  (wire (pts (xy 147.3 114.92) (xy 145 114.92)) (stroke (width 0.254) (type default)) (uuid "w-u1-gpio17"))
+  (wire (pts (xy 147.3 117.46) (xy 145 117.46)) (stroke (width 0.254) (type default)) (uuid "w-u1-gpio18"))
+  (wire (pts (xy 147.3 120)    (xy 145 120))    (stroke (width 0.254) (type default)) (uuid "w-u1-gpio19"))
+  (wire (pts (xy 147.3 122.54) (xy 145 122.54)) (stroke (width 0.254) (type default)) (uuid "w-u1-gpio22"))
+  (wire (pts (xy 147.3 125.08) (xy 145 125.08)) (stroke (width 0.254) (type default)) (uuid "w-u1-gpio23"))
+
+  ;; ESP32 power
+  (wire (pts (xy 154.92 140.32) (xy 154.92 143)) (stroke (width 0.254) (type default)) (uuid "w-u1-gnd"))
+  (wire (pts (xy 165.08 140.32) (xy 165.08 97))  (stroke (width 0.254) (type default)) (uuid "w-u1-vcc"))
+
+  ;; MAX30102 pin stubs (right side at x=55+7.62=62.62)
+  (wire (pts (xy 62.62 63.73) (xy 65 63.73)) (stroke (width 0.254) (type default)) (uuid "w-u2-scl"))
+  (wire (pts (xy 62.62 66.27) (xy 65 66.27)) (stroke (width 0.254) (type default)) (uuid "w-u2-sda"))
+  ;; MAX30102 VCC/GND (left side at x=55-7.62=47.38)
+  (wire (pts (xy 47.38 63.73) (xy 44 63.73)) (stroke (width 0.254) (type default)) (uuid "w-u2-vcc"))
+  (wire (pts (xy 47.38 66.27) (xy 44 66.27)) (stroke (width 0.254) (type default)) (uuid "w-u2-gnd"))
+
+  ;; DHT22 pin stubs
+  (wire (pts (xy 47.38 112.54) (xy 44 112.54)) (stroke (width 0.254) (type default)) (uuid "w-u3-vcc"))
+  (wire (pts (xy 47.38 115)    (xy 44 115))    (stroke (width 0.254) (type default)) (uuid "w-u3-data"))
+  (wire (pts (xy 47.38 117.54) (xy 44 117.54)) (stroke (width 0.254) (type default)) (uuid "w-u3-gnd"))
+
+  ;; MPU6050 pin stubs
+  (wire (pts (xy 62.62 161.19) (xy 65 161.19)) (stroke (width 0.254) (type default)) (uuid "w-u4-scl"))
+  (wire (pts (xy 62.62 163.73) (xy 65 163.73)) (stroke (width 0.254) (type default)) (uuid "w-u4-sda"))
+  (wire (pts (xy 47.38 161.19) (xy 44 161.19)) (stroke (width 0.254) (type default)) (uuid "w-u4-vcc"))
+  (wire (pts (xy 47.38 168.81) (xy 44 168.81)) (stroke (width 0.254) (type default)) (uuid "w-u4-gnd"))
+
+  ;; SX1278 pin stubs (left side at x=285-8.89=276.11)
+  (wire (pts (xy 276.11 92.38) (xy 273 92.38)) (stroke (width 0.254) (type default)) (uuid "w-u5-vcc"))
+  (wire (pts (xy 276.11 94.92) (xy 273 94.92)) (stroke (width 0.254) (type default)) (uuid "w-u5-mosi"))
+  (wire (pts (xy 276.11 97.46) (xy 273 97.46)) (stroke (width 0.254) (type default)) (uuid "w-u5-miso"))
+  (wire (pts (xy 276.11 100)   (xy 273 100))   (stroke (width 0.254) (type default)) (uuid "w-u5-clk"))
+  (wire (pts (xy 276.11 102.54) (xy 273 102.54)) (stroke (width 0.254) (type default)) (uuid "w-u5-cs"))
+  (wire (pts (xy 276.11 105.08) (xy 273 105.08)) (stroke (width 0.254) (type default)) (uuid "w-u5-irq"))
+  (wire (pts (xy 276.11 107.62) (xy 273 107.62)) (stroke (width 0.254) (type default)) (uuid "w-u5-rst"))
+  (wire (pts (xy 285 112.7)    (xy 285 115))   (stroke (width 0.254) (type default)) (uuid "w-u5-gnd"))
+
+  ;; BQ24195 pin stubs (left side at x=185-8.89=176.11)
+  (wire (pts (xy 176.11 224.92) (xy 173 224.92)) (stroke (width 0.254) (type default)) (uuid "w-u6-vbus"))
+  (wire (pts (xy 176.11 227.46) (xy 173 227.46)) (stroke (width 0.254) (type default)) (uuid "w-u6-usbp"))
+  (wire (pts (xy 176.11 230)    (xy 173 230))    (stroke (width 0.254) (type default)) (uuid "w-u6-usbn"))
+  (wire (pts (xy 193.89 224.92) (xy 197 224.92)) (stroke (width 0.254) (type default)) (uuid "w-u6-batt"))
+  (wire (pts (xy 193.89 235.08) (xy 193.89 241)) (stroke (width 0.254) (type default)) (uuid "w-u6-gnd"))
+
+  ;; J1 USB-C pin stubs (left at x=95-7.62=87.38)
+  (wire (pts (xy 87.38 236.19) (xy 84 236.19)) (stroke (width 0.254) (type default)) (uuid "w-j1-vbus"))
+  (wire (pts (xy 87.38 238.73) (xy 84 238.73)) (stroke (width 0.254) (type default)) (uuid "w-j1-usbp"))
+  (wire (pts (xy 87.38 241.27) (xy 84 241.27)) (stroke (width 0.254) (type default)) (uuid "w-j1-usbn"))
+  (wire (pts (xy 87.38 244.81) (xy 87.38 248)) (stroke (width 0.254) (type default)) (uuid "w-j1-gnd"))
+
+  ;; J2 JST pin stubs (left at x=310-6.35=303.65)
+  (wire (pts (xy 303.65 238.73) (xy 300 238.73)) (stroke (width 0.254) (type default)) (uuid "w-j2-batt"))
+  (wire (pts (xy 303.65 241.27) (xy 303.65 245)) (stroke (width 0.254) (type default)) (uuid "w-j2-gnd"))
+
+  ;; BAT1 pin stubs (top pin at y=240-7.62=232.38, bottom at y=240+7.62=247.62)
+  (wire (pts (xy 40 232.38) (xy 43 232.38)) (stroke (width 0.254) (type default)) (uuid "w-bat1-pos"))
+  (wire (pts (xy 40 247.62) (xy 40 250))    (stroke (width 0.254) (type default)) (uuid "w-bat1-neg"))
+
+  ;; R1 pull-up SCL: pin1(top) → +3.3V, pin2(bottom) → SCL_I2C
+  (wire (pts (xy 120 76.19) (xy 120 74)) (stroke (width 0.254) (type default)) (uuid "w-r1-top"))
+  (wire (pts (xy 120 83.81) (xy 120 86)) (stroke (width 0.254) (type default)) (uuid "w-r1-bot"))
+
+  ;; R2 pull-up SDA: pin1(top) → +3.3V, pin2(bottom) → SDA_I2C
+  (wire (pts (xy 120 91.19) (xy 120 89)) (stroke (width 0.254) (type default)) (uuid "w-r2-top"))
+  (wire (pts (xy 120 98.81) (xy 120 101)) (stroke (width 0.254) (type default)) (uuid "w-r2-bot"))
+
+  ;; ── GND symbols for connectors/passives ───────────────────────────────────
+  (symbol (lib_id "power:GND") (at 87.38 248 270) (unit 1) (in_bom no) (on_board no)
+    (uuid "pwr-gnd-j1") (property "Reference" "#PWR08" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "GND" (at 87.38 252 0) (effects (font (size 1.27 1.27)))) (pin "1" (uuid "pwrpin-gnd-j1")))
+  (symbol (lib_id "power:GND") (at 303.65 245 270) (unit 1) (in_bom no) (on_board no)
+    (uuid "pwr-gnd-j2") (property "Reference" "#PWR09" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "GND" (at 303.65 249 0) (effects (font (size 1.27 1.27)))) (pin "1" (uuid "pwrpin-gnd-j2")))
+  (symbol (lib_id "power:GND") (at 40 250 270) (unit 1) (in_bom no) (on_board no)
+    (uuid "pwr-gnd-bat") (property "Reference" "#PWR10" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "GND" (at 40 254 0) (effects (font (size 1.27 1.27)))) (pin "1" (uuid "pwrpin-gnd-bat")))
+
+  ;; ── +3.3V for R1, R2 pull-ups ─────────────────────────────────────────────
+  (symbol (lib_id "power:+3.3V") (at 120 74 0) (unit 1) (in_bom no) (on_board no)
+    (uuid "pwr-vcc-r1") (property "Reference" "#PWR11" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "+3.3V" (at 120 71 0) (effects (font (size 1.27 1.27)))) (pin "1" (uuid "pwrpin-vcc-r1")))
+  (symbol (lib_id "power:+3.3V") (at 120 89 0) (unit 1) (in_bom no) (on_board no)
+    (uuid "pwr-vcc-r2") (property "Reference" "#PWR12" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "+3.3V" (at 120 86 0) (effects (font (size 1.27 1.27)))) (pin "1" (uuid "pwrpin-vcc-r2")))
+
+  ;; ── Text annotations ──────────────────────────────────────────────────────
+  (text "I2C Bus (400kHz)" (at 95 78 0) (effects (font (size 1.0 1.0) (italic yes)) (justify left)))
+  (text "SPI Bus (10MHz)" (at 210 108 0) (effects (font (size 1.0 1.0) (italic yes)) (justify left)))
+  (text "915 MHz LoRa SF12" (at 285 88 0) (effects (font (size 0.9 0.9) (italic yes)) (justify left)))
+  (text "Carga LiPo 4000mAh" (at 150 215 0) (effects (font (size 0.9 0.9) (italic yes)) (justify left)))
+  (text "R1, R2: Pull-up I2C a +3.3V" (at 107 70 0) (effects (font (size 0.8 0.8)) (justify left)))
+  (text "Antena LoRa 915 MHz" (at 295 100 0) (effects (font (size 0.8 0.8)) (justify left)))
+
+  (sheet_instances
+    (path "/" (page "1"))
+  )
+)

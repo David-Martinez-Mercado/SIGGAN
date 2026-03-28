@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { registrarPorId } from '../services/blockchain.service';
 
 const router = Router();
 router.use(authMiddleware);
@@ -122,6 +123,9 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     if ((data.tipo === 'PRUEBA_TB' || data.tipo === 'PRUEBA_BR') && data.resultado === 'POSITIVO') {
       await prisma.animal.update({ where: { id: data.animalId }, data: { estatusSanitario: 'REACTOR' } });
     }
+
+    // Registrar evento en blockchain automáticamente
+    registrarPorId('evento', evento.id).catch(e => console.error('[blockchain] error registrar evento:', e));
 
     res.status(201).json(evento);
   } catch (error: any) {

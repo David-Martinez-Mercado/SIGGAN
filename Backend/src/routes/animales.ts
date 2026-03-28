@@ -3,6 +3,7 @@ import { z } from 'zod';
 import prisma from '../config/database';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { generarAreteNacional, generarRFIDTag, generarAreteExportacion } from '../services/folios';
+import { registrarPorId } from '../services/blockchain.service';
 
 const router = Router();
 router.use(authMiddleware);
@@ -178,6 +179,9 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         upp: { select: { id: true, claveUPP: true, nombre: true } },
       },
     });
+
+    // Registrar en blockchain automáticamente
+    registrarPorId('animal', animal.id).catch(e => console.error('[blockchain] error registrar animal:', e));
 
     // Marcar arete nacional del pool como asignado
     if (areteDelPool) {

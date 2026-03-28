@@ -381,3 +381,31 @@ enum EstatusOferta {
   RECHAZADA
   CANCELADA
 }
+
+// ==================== BLOCKCHAIN SIMULADA ====================
+model BlockchainSimulada {
+  id           String   @id @default(uuid())
+  hashActual   String   @unique
+  hashAnterior String
+  tipoRegistro String   // animal | evento | certificado | venta | usuario | propietario | upp | formulario | historial_arete | documento
+  referenciaId String
+  hashDatos    String   // SHA256 del dato serializado
+  funcionMatem String   // F(data) resultado matemático
+  hashFinal    String   // FINAL_HASH del dato (lo que se verifica)
+  timestamp    DateTime @default(now())
+
+  @@index([tipoRegistro, referenciaId])
+  @@map("blockchain_simulada")
+}
+
+// ==================== LOGS DE INTEGRIDAD ====================
+model LogIntegridad {
+  id           String   @id @default(uuid())
+  tipoAlerta   String   // VERIFICADO | MANIPULACION | FRAUDE | CADENA_INVALIDA
+  tipoRegistro String
+  referenciaId String
+  detalles     String?
+  timestamp    DateTime @default(now())
+
+  @@map("logs_integridad")
+}
